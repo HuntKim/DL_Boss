@@ -225,14 +225,64 @@ case "$SW_TYPE" in
         esac
 
         # ----------------------------------------------------
+        # 5-1-1. 1.8 마이너(업데이트) 버전 고정 설치
+        #   - 리포지토리에 여러 1.8.0 업데이트 버전 RPM이 공존하므로,
+        #     $SW_VER 에 담긴 마이너 버전이 아래 목록에 있으면 해당
+        #     버전을 NEVR(name-epoch:version-release)로 정확히 지정해
+        #     설치한다. (oracle_jdk 분기와 동일하게 strip_arch_suffix /
+        #     normalize_version 을 재사용해 "1.8.0_232_64b", "8u232",
+        #     "1.8.0.232" 등 표기가 달라도 동일하게 처리)
+        #   - 마이너 버전이 없거나(예: "8", "1.8") 목록에 없으면 기존
+        #     동작대로 최신 버전을 설치한다.
+        #   - 아래 EVR 값은 RHEL8(.el8) 리포지토리 기준으로만 확인되어
+        #     있어 RHEL9에는 적용하지 않는다.
+        # ----------------------------------------------------
+        OPENJDK_PINNED_EVR=""
+        if [ "$PKG_NAME" == "java-1.8.0-openjdk-devel" ]; then
+            strip_arch_suffix "$SW_VER"
+            NORM_SW_VER=$(normalize_version "$CORE_VERSION")
+            UPDATE_NUM="${NORM_SW_VER##*.}"
+
+            if [ "$OS_FAMILY" == "RHEL8" ]; then
+                case "$UPDATE_NUM" in
+                    432) OPENJDK_PINNED_EVR="1:1.8.0.432.b06-2.el8" ;;
+                    402) OPENJDK_PINNED_EVR="1:1.8.0.402.b06-2.el8" ;;
+                    322) OPENJDK_PINNED_EVR="1:1.8.0.322.b06-11.el8" ;;
+                    232) OPENJDK_PINNED_EVR="1:1.8.0.232.b06-0.el8_5" ;;
+                    *) OPENJDK_PINNED_EVR="" ;;
+                esac
+            elif [[ "$UPDATE_NUM" =~ ^(432|402|322|232)$ ]]; then
+                log_warn "마이너 버전 고정 목록은 RHEL8 기준으로만 등록되어 있어 $OS_FAMILY 에서는 적용하지 않습니다. 최신 버전을 설치합니다. (요청 버전: $SW_VER)"
+            fi
+        fi
+
+        if [ -n "$OPENJDK_PINNED_EVR" ]; then
+            INSTALL_TARGET="${PKG_NAME}-${OPENJDK_PINNED_EVR}"
+            # rpm -qa 출력은 기본적으로 epoch(1:) 없이 name-version-release.arch 로
+            # 표기되므로, 설치 여부 확인 시에는 epoch를 제외한 문자열로 비교한다.
+            CHECK_STRING="${PKG_NAME}-${OPENJDK_PINNED_EVR#*:}"
+            log_info "마이너 버전 확인됨 ($SW_VER -> update $UPDATE_NUM). 고정 버전으로 설치합니다: $INSTALL_TARGET"
+        else
+            INSTALL_TARGET="$PKG_NAME"
+            CHECK_STRING=""
+            log_info "마이너 버전이 지정되지 않았거나 지원 목록에 없어 최신 버전을 설치합니다: $PKG_NAME"
+        fi
+
+        # ----------------------------------------------------
         # 5-2. 설치 여부 사전 확인 (rpm 패키지 DB 기준)
         # ----------------------------------------------------
-        if rpm -q "$PKG_NAME" &>/dev/null; then
-            log_success "$PKG_NAME 는 이미 설치되어 있습니다. 설치를 건너뜁니다."
-        elif sudo "$PKG_MANAGER" install -y "$PKG_NAME"; then
-            log_success "$PKG_NAME 패키지 설치 완료"
+        if [ -n "$CHECK_STRING" ]; then
+            IS_INSTALLED=$(rpm -qa | grep -F "$CHECK_STRING")
         else
-            log_error "$PKG_NAME 패키지 설치 실패"
+            IS_INSTALLED=$(rpm -q "$PKG_NAME" 2>/dev/null)
+        fi
+
+        if [ -n "$IS_INSTALLED" ]; then
+            log_success "$INSTALL_TARGET 는 이미 설치되어 있습니다. 설치를 건너뜁니다: $IS_INSTALLED"
+        elif sudo "$PKG_MANAGER" install -y "$INSTALL_TARGET"; then
+            log_success "$INSTALL_TARGET 패키지 설치 완료"
+        else
+            log_error "$INSTALL_TARGET 패키지 설치 실패"
             exit 1
         fi
 

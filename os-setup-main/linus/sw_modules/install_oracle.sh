@@ -436,3 +436,43 @@ else
     log_error "★ Oracle Client 설치 검증 실패 ★"
     exit 1
 fi
+
+# ==============================================================================
+# 7. tnsnames.ora 다운로드 및 배치
+#   호스트별로 웹서버(FILE_URL/tnsnames/<hostname>.tnsnames.ora)에 미리 준비해
+#   둔 tnsnames.ora를 받아 ${ORACLE_HOME}/network/admin/tnsnames.ora 에 배치한다.
+#   위 검증에서 실패했다면 이미 exit 1로 스크립트가 끝났으므로, 이 아래는
+#   Client 설치가 정상 완료된 경우에만 실행된다.
+#   ※ 이 프로젝트의 기존 관례(호스트 전용 env 누락 시 경고+계속 등)를 따라,
+#     tnsnames.ora 하나 못 받아왔다고 전체 설치를 실패 처리하지는 않는다.
+#     웹서버에 해당 호스트용 파일이 아직 준비되지 않았을 수 있으므로
+#     경고만 남기고 넘어간다.
+# ==============================================================================
+log_info "tnsnames.ora 배치 작업을 시작합니다."
+
+TNSNAMES_URL="${FILE_URL}/tnsnames/${TARGET_HOSTNAME}.tnsnames.ora"
+TNSNAMES_ADMIN_DIR="${ORACLE_HOME}/network/admin"
+TNSNAMES_DEST="${TNSNAMES_ADMIN_DIR}/tnsnames.ora"
+
+su - oracle << EOF
+mkdir -p "${TNSNAMES_ADMIN_DIR}"
+
+log_sub() { echo -e "[oracle] \$1"; }
+log_sub "tnsnames.ora 다운로드 중... (${TNSNAMES_URL})"
+
+if curl -f -s -k -L --retry 3 --retry-delay 3 "${TNSNAMES_URL}" -o "${TNSNAMES_DEST}"; then
+    log_sub "tnsnames.ora 다운로드 완료: ${TNSNAMES_DEST}"
+    exit 0
+else
+    log_sub "tnsnames.ora 다운로드 실패: ${TNSNAMES_URL}"
+    exit 1
+fi
+EOF
+TNSNAMES_RESULT=$?
+
+if [ "${TNSNAMES_RESULT}" -eq 0 ]; then
+    log_success "tnsnames.ora 배치 완료: ${TNSNAMES_DEST}"
+else
+    log_warn "tnsnames.ora 다운로드에 실패했습니다: ${TNSNAMES_URL}"
+    log_warn "(웹서버에 이 호스트(${TARGET_HOSTNAME})용 tnsnames.ora가 준비되어 있는지 확인해주세요. Client 설치는 정상 완료된 상태이며 이 단계만 건너뜁니다.)"
+fi
