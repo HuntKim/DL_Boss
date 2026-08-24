@@ -234,8 +234,10 @@ case "$SW_TYPE" in
         #     "1.8.0.232" 등 표기가 달라도 동일하게 처리)
         #   - 마이너 버전이 없거나(예: "8", "1.8") 목록에 없으면 기존
         #     동작대로 최신 버전을 설치한다.
-        #   - 아래 EVR 값은 RHEL8(.el8) 리포지토리 기준으로만 확인되어
-        #     있어 RHEL9에는 적용하지 않는다.
+        #   - EVR 값은 RHEL8/RHEL9 리포지토리별로 각각 확인된 값만 등록되어
+        #     있다. RHEL9에는 232 버전 RPM이 없어 목록에서 제외했다 —
+        #     RHEL9에서 232가 요청되면 경고 후 최신 버전을 설치한다.
+        #     그 외 OS_FAMILY(RHEL8/9가 아닌 경우)는 항상 최신 버전을 설치.
         # ----------------------------------------------------
         OPENJDK_PINNED_EVR=""
         if [ "$PKG_NAME" == "java-1.8.0-openjdk-devel" ]; then
@@ -243,17 +245,34 @@ case "$SW_TYPE" in
             NORM_SW_VER=$(normalize_version "$CORE_VERSION")
             UPDATE_NUM="${NORM_SW_VER##*.}"
 
-            if [ "$OS_FAMILY" == "RHEL8" ]; then
-                case "$UPDATE_NUM" in
-                    432) OPENJDK_PINNED_EVR="1:1.8.0.432.b06-2.el8" ;;
-                    402) OPENJDK_PINNED_EVR="1:1.8.0.402.b06-2.el8" ;;
-                    322) OPENJDK_PINNED_EVR="1:1.8.0.322.b06-11.el8" ;;
-                    232) OPENJDK_PINNED_EVR="1:1.8.0.232.b06-0.el8_5" ;;
-                    *) OPENJDK_PINNED_EVR="" ;;
-                esac
-            elif [[ "$UPDATE_NUM" =~ ^(432|402|322|232)$ ]]; then
-                log_warn "마이너 버전 고정 목록은 RHEL8 기준으로만 등록되어 있어 $OS_FAMILY 에서는 적용하지 않습니다. 최신 버전을 설치합니다. (요청 버전: $SW_VER)"
-            fi
+            case "$OS_FAMILY" in
+                RHEL8)
+                    case "$UPDATE_NUM" in
+                        432) OPENJDK_PINNED_EVR="1:1.8.0.432.b06-2.el8" ;;
+                        402) OPENJDK_PINNED_EVR="1:1.8.0.402.b06-2.el8" ;;
+                        322) OPENJDK_PINNED_EVR="1:1.8.0.322.b06-11.el8" ;;
+                        232) OPENJDK_PINNED_EVR="1:1.8.0.232.b06-0.el8_5" ;;
+                        *) OPENJDK_PINNED_EVR="" ;;
+                    esac
+                    ;;
+                RHEL9)
+                    case "$UPDATE_NUM" in
+                        432) OPENJDK_PINNED_EVR="1:1.8.0.432.b06-3.el9" ;;
+                        402) OPENJDK_PINNED_EVR="1:1.8.0.402.b06-2.el9" ;;
+                        322) OPENJDK_PINNED_EVR="1:1.8.0.322.b06-9.el9" ;;
+                        232)
+                            log_warn "마이너 버전 232는 RHEL9용 고정 목록에 없어 최신 버전을 설치합니다. (요청 버전: $SW_VER)"
+                            OPENJDK_PINNED_EVR=""
+                            ;;
+                        *) OPENJDK_PINNED_EVR="" ;;
+                    esac
+                    ;;
+                *)
+                    if [[ "$UPDATE_NUM" =~ ^(432|402|322|232)$ ]]; then
+                        log_warn "마이너 버전 고정 목록은 RHEL8/RHEL9 기준으로만 등록되어 있어 $OS_FAMILY 에서는 적용하지 않습니다. 최신 버전을 설치합니다. (요청 버전: $SW_VER)"
+                    fi
+                    ;;
+            esac
         fi
 
         if [ -n "$OPENJDK_PINNED_EVR" ]; then
