@@ -1,6 +1,3 @@
-# Github: Fine-grained personal access tokens(~ Nov 21 2026)
-***REMOVED-REVOKED-TOKEN***
-
 # Linux 명령 및 기타
 ## 계정 생성
 ```bash
