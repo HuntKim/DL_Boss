@@ -192,13 +192,47 @@ case "$SW_TYPE" in
             exit 1
         fi
 
-        # Oracle 공식 RPM relocate 설치 처리
-        log_info "RPM 패키지 설치 진행 중 (relocate: $INSTALL_PATH)..."
+        # ----------------------------------------------------
+        # 5-2. --relocate 지원 여부 판단
+        #   - JDK 17부터 Oracle RPM 패키지 구조가 바뀌어 --relocate
+        #     옵션이 동작하지 않는다(25 포함). 메이저 버전을 뽑아 17
+        #     이상이면 relocate 없이 기본 경로로 설치한다.
+        #   - "1.8.0.102"(9 미만 구버전 표기)와 "17.0.2"/"25"(9 이상
+        #     신규 표기)를 모두 처리하기 위해 두 패턴을 확인한다.
+        # ----------------------------------------------------
+        get_oracle_jdk_major_version() {
+            local v="$1"
+            if [[ "$v" =~ ^1\.([0-9]+)\. ]]; then
+                echo "${BASH_REMATCH[1]}"
+            elif [[ "$v" =~ ^([0-9]+) ]]; then
+                echo "${BASH_REMATCH[1]}"
+            else
+                echo ""
+            fi
+        }
+
+        JDK_MAJOR=$(get_oracle_jdk_major_version "$NORM_REQUEST_VER")
+        USE_RELOCATE=true
+        if [ -n "$JDK_MAJOR" ] && [ "$JDK_MAJOR" -ge 17 ]; then
+            USE_RELOCATE=false
+            log_info "JDK 메이저 버전 ${JDK_MAJOR}: --relocate 미지원 버전으로 판단되어 기본 설치로 진행합니다. (INSTALL_PATH=$INSTALL_PATH 는 적용되지 않음)"
+        fi
+
+        # Oracle 공식 RPM 설치 처리 (지원되는 버전만 relocate 적용)
         mkdir -p "$JAVA_HOME"
         mkdir -p "$INSTALL_PATH"
-        if sudo rpm -ivh --relocate "$JAVA_HOME"="$INSTALL_PATH" "$SOURCE_FILE"; then
+
+        if [ "$USE_RELOCATE" = true ]; then
+            log_info "RPM 패키지 설치 진행 중 (relocate: $INSTALL_PATH)..."
+            INSTALL_CMD=(sudo rpm -ivh --relocate "${JAVA_HOME}=${INSTALL_PATH}" "$SOURCE_FILE")
+        else
+            log_info "RPM 패키지 설치 진행 중 (기본 설치, relocate 미사용)..."
+            INSTALL_CMD=(sudo rpm -ivh "$SOURCE_FILE")
+        fi
+
+        if "${INSTALL_CMD[@]}"; then
             log_success "Oracle JDK RPM 설치 완료."
-            rm -f "$SOURCE_FILEE"
+            rm -f "$SOURCE_FILE"
         else
             log_error "RPM 설치 실패."
             rm -f "$SOURCE_FILE"
