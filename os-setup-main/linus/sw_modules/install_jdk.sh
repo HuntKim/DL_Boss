@@ -123,46 +123,85 @@ case "$SW_TYPE" in
     "oracle_jdk")
         log_info "Oracle JDK 설치 진행..."
 
+        strip_arch_suffix "$SW_VER"
+
+        NORM_REQUEST_VER=$(normalize_version "$CORE_VERSION")
+
         # ----------------------------------------------------
-        # 5-1. 설치 여부 사전 확인
+        # 5-1-1. JDK 메이저 버전 판단 / 신·구 패키지 구조 구분
+        #   - JDK 17부터(25 포함) Oracle RPM 패키지 구조가 바뀌어:
+        #       a) --relocate 옵션이 동작하지 않고
+        #       b) 패키지명이 "jdk_<버전>_<빌드>"(예: jdk_1.8.0_102)가
+        #          아니라 "jdk-<메이저버전>"(예: jdk-25)로 고정되며,
+        #          실제 설치 위치도 항상 /usr/java/jdk-<메이저버전>
+        #          심볼릭 링크로 고정된다(요청한 INSTALL_PATH 무시).
+        #     실측: rpm -qa jdk_25.0_2 로는 못 찾고, rpm -qa jdk-25 로
+        #     조회해야 "jdk-25-25.0.2-10.x86_64" 로 확인됨.
+        #   - "1.8.0.102"(9 미만 구표기)와 "17.0.2"/"25"(9 이상 신표기)를
+        #     모두 처리하기 위해 두 패턴을 확인한다.
+        # ----------------------------------------------------
+        get_oracle_jdk_major_version() {
+            local v="$1"
+            if [[ "$v" =~ ^1\.([0-9]+)\. ]]; then
+                echo "${BASH_REMATCH[1]}"
+            elif [[ "$v" =~ ^([0-9]+) ]]; then
+                echo "${BASH_REMATCH[1]}"
+            else
+                echo ""
+            fi
+        }
+
+        JDK_MAJOR=$(get_oracle_jdk_major_version "$NORM_REQUEST_VER")
+        USE_RELOCATE=true
+        if [ -n "$JDK_MAJOR" ] && [ "$JDK_MAJOR" -ge 17 ]; then
+            USE_RELOCATE=false
+        fi
+        log_info "버전 파싱 결과: SW_VERSION=$SW_VER -> CORE_VERSION=$CORE_VERSION / ARCH_SUFFIX=$ARCH_SUFFIX / NORM_REQUEST_VER=$NORM_REQUEST_VER / JDK_MAJOR=${JDK_MAJOR:-미상} / relocate 지원=$USE_RELOCATE"
+
+        # ----------------------------------------------------
+        # 5-1-2. 설치 여부 사전 확인
         #   ※ 예전엔 Oracle JDK 배포 디렉토리 명명 규칙(jdk<버전>-<arch>)을
         #     추측해서 그 경로에 java 실행 파일이 있는지로 판단했으나,
         #     이 명명 규칙 자체가 업데이트 버전마다 계속 바뀌어왔다.
         #       - ~8u161      : jdk1.8.0_161          (접미사 없음)
         #       - 8u171~      : jdk1.8.0_171-amd64     (아키텍처 접미사 추가)
         #       - 8u421~      : jdk-1.8.0_421-oracle-x64 (패키지명 자체가 jdk-1.8로 변경)
+        #       - 17/25(신규구조) : jdk-<메이저버전> (위 5-1-1 참고)
         #     그래서 경로를 미리 계산해 존재 여부를 판단하면 오탐(설치돼
         #     있는데 없다고 판단)이 발생할 수 있다(실제 사례: 8u102는
         #     접미사가 없는데 "-amd64"가 있다고 가정해 재설치를 시도하다
         #     rpm이 "이미 설치되어 있음"으로 실패).
         #     대신 openjdk 분기와 동일하게, 경로와 무관한 RPM 패키지 DB로
-        #     직접 설치 여부를 확인한다. 이 시기의 Oracle JDK 8 RPM은
-        #     패키지명 자체에 버전이 포함되어 있어(예: jdk1.8.0_102) 여러
-        #     버전이 별도 패키지로 공존 가능하며, 정확히 이 버전의 패키지가
-        #     설치돼 있는지만 확인하면 충분하다.
+        #     직접 설치 여부를 확인한다.
         # ----------------------------------------------------
-        strip_arch_suffix "$SW_VER"
+        if [ "$USE_RELOCATE" = false ]; then
+            # 신규 구조(17+): 패키지명이 "jdk-<메이저버전>"으로 고정되고
+            # 실제 설치 경로도 항상 /usr/java/jdk-<메이저버전> 고정.
+            RPM_PKG_NAME="jdk-${JDK_MAJOR}"
+            JAVA_BIN_HINT="/usr/java/jdk-${JDK_MAJOR}/bin/java"
+            log_info "설치 여부 확인 (신규 패키지 구조, RPM 패키지명: $RPM_PKG_NAME, 요청 버전: $NORM_REQUEST_VER)"
 
-        NORM_REQUEST_VER=$(normalize_version "$CORE_VERSION")
-        # "1.8.0.102" -> "1.8.0_102" (Oracle RPM 패키지명 규칙)
-        ORACLE_DIR_VER="${NORM_REQUEST_VER%.*}_${NORM_REQUEST_VER##*.}"
-        RPM_PKG_NAME="jdk_${ORACLE_DIR_VER}"
-        log_info "=======NORM_REQUEST_VER=${NORM_REQUEST_VER},ORACLE_DIR_VER=${ORACLE_DIR_VER}==========="
-        # 참고용 예상 실행 경로 (설치 후 안내 로그용. 위 사유로 100% 정확하다고
-        # 보장할 수 없어 존재 여부 "판단"에는 쓰지 않는다)
-        JAVA_BIN_HINT="$INSTALL_PATH/${RPM_PKG_NAME}/bin/java"
+            if INSTALLED_NVR=$(rpm -q "$RPM_PKG_NAME" 2>/dev/null) && [[ "$INSTALLED_NVR" == *"$NORM_REQUEST_VER"* ]] && [ -f "$JAVA_BIN_HINT" ]; then
+                log_success "요청 버전($SW_VER)이 RPM으로 설치되어 있고 실행 파일이 확인되었습니다. 건너뜁니다: $INSTALLED_NVR"
+                exit 0
+            else
+                log_info "패키지($RPM_PKG_NAME)가 없거나 요청 버전과 다르거나 실행 파일이 없습니다${INSTALLED_NVR:+ (현재 설치: $INSTALLED_NVR)}. 설치를 진행합니다."
+            fi
+        else
+            # 기존 구조(~16): 패키지명 자체에 버전이 포함(jdk1.8.0_102 등)
+            ORACLE_DIR_VER="${NORM_REQUEST_VER%.*}_${NORM_REQUEST_VER##*.}"
+            RPM_PKG_NAME="jdk_${ORACLE_DIR_VER}"
+            JAVA_BIN_HINT="$INSTALL_PATH/${RPM_PKG_NAME}/bin/java"
+            log_info "설치 여부 확인 (RPM 패키지 기준): $RPM_PKG_NAME"
 
-        log_info "버전 파싱 결과: SW_VERSION=$SW_VER -> CORE_VERSION=$CORE_VERSION / ARCH_SUFFIX=$ARCH_SUFFIX"
-        log_info "설치 여부 확인 (RPM 패키지 기준): $RPM_PKG_NAME"
-
-        # RPM 패키지가 설치되어 있고, 동시에 실제 실행 파일이 해당 경로에 존재하는지 확인  
-        if rpm -qa | grep -q "$ORACLE_DIR_VER" && [ -f "$JAVA_BIN_HINT" ]; then  
-            INSTALLED_PKG_INFO=$(rpm -qa | grep "$ORACLE_DIR_VER")  
-            log_success "요청 버전($SW_VER)이 RPM으로 설치되어 있고 실행 파일이 확인되었습니다. 건너뜁니다: $INSTALLED_PKG_INFO"  
-            exit 0  
-        else  
-            log_info "RPM 패키지가 없거나 실행 파일($JAVA_BIN_HINT)이 존재하지 않습니다. 재설치를 진행합니다."  
-        fi  
+            if rpm -qa | grep -q "$ORACLE_DIR_VER" && [ -f "$JAVA_BIN_HINT" ]; then
+                INSTALLED_PKG_INFO=$(rpm -qa | grep "$ORACLE_DIR_VER")
+                log_success "요청 버전($SW_VER)이 RPM으로 설치되어 있고 실행 파일이 확인되었습니다. 건너뜁니다: $INSTALLED_PKG_INFO"
+                exit 0
+            else
+                log_info "RPM 패키지가 없거나 실행 파일($JAVA_BIN_HINT)이 존재하지 않습니다. 재설치를 진행합니다."
+            fi
+        fi
 
         DOWNLOAD_URL_DIR="${FILE_URL}/${DIR_NAME}/"
         mkdir -p "$TEMP_DIR"
@@ -190,32 +229,6 @@ case "$SW_TYPE" in
         if [ ! -f "$SOURCE_FILE" ]; then
             log_error "파일 다운로드 실패: $TAR_FILE"
             exit 1
-        fi
-
-        # ----------------------------------------------------
-        # 5-2. --relocate 지원 여부 판단
-        #   - JDK 17부터 Oracle RPM 패키지 구조가 바뀌어 --relocate
-        #     옵션이 동작하지 않는다(25 포함). 메이저 버전을 뽑아 17
-        #     이상이면 relocate 없이 기본 경로로 설치한다.
-        #   - "1.8.0.102"(9 미만 구버전 표기)와 "17.0.2"/"25"(9 이상
-        #     신규 표기)를 모두 처리하기 위해 두 패턴을 확인한다.
-        # ----------------------------------------------------
-        get_oracle_jdk_major_version() {
-            local v="$1"
-            if [[ "$v" =~ ^1\.([0-9]+)\. ]]; then
-                echo "${BASH_REMATCH[1]}"
-            elif [[ "$v" =~ ^([0-9]+) ]]; then
-                echo "${BASH_REMATCH[1]}"
-            else
-                echo ""
-            fi
-        }
-
-        JDK_MAJOR=$(get_oracle_jdk_major_version "$NORM_REQUEST_VER")
-        USE_RELOCATE=true
-        if [ -n "$JDK_MAJOR" ] && [ "$JDK_MAJOR" -ge 17 ]; then
-            USE_RELOCATE=false
-            log_info "JDK 메이저 버전 ${JDK_MAJOR}: --relocate 미지원 버전으로 판단되어 기본 설치로 진행합니다. (INSTALL_PATH=$INSTALL_PATH 는 적용되지 않음)"
         fi
 
         # Oracle 공식 RPM 설치 처리 (지원되는 버전만 relocate 적용)
