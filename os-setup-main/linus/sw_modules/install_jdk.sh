@@ -344,9 +344,32 @@ case "$SW_TYPE" in
             IS_INSTALLED=$(rpm -q "$PKG_NAME" 2>/dev/null)
         fi
 
+        # ----------------------------------------------------
+        # 5-2-1. 마이너 버전 고정 설치 시 기존 버전과 나란히 유지
+        #   - dnf/yum은 기본적으로 java-1.8.0-openjdk* 를 "같은 패키지의
+        #     새 버전"으로 보고 자동 업그레이드(기존 마이너 버전 제거)
+        #     한다. 그래서 232를 설치한 뒤 322를 설치하면 232가 지워진다.
+        #   - dnf의 installonlypkgs 옵션(커널 패키지가 여러 버전 유지되는
+        #     것과 동일한 메커니즘)에 이 패키지 계열을 넣으면 업그레이드
+        #     대신 나란히 설치된다. /etc/dnf/dnf.conf를 영구 수정하는 대신
+        #     이 설치 1회에만 --setopt으로 적용한다(다른 패키지에 영향 없음).
+        #   - 마이너 버전을 지정하지 않은 "최신 설치" 요청은 기존과 동일하게
+        #     단일 최신 버전만 유지한다(installonlypkgs 미적용).
+        #   - installonly_limit 기본값은 3이라 동시 보관 버전이 4개를
+        #     넘어가면 가장 오래된 버전이 자동 정리된다. 필요 시
+        #     --setopt=installonly_limit=0(무제한)을 추가로 고려할 것.
+        # ----------------------------------------------------
+        INSTALL_CMD=(sudo "$PKG_MANAGER" install -y)
+        if [ -n "$OPENJDK_PINNED_EVR" ]; then
+            PKG_BASE="${PKG_NAME%-devel}"
+            INSTALL_CMD+=("--setopt=installonlypkgs=${PKG_BASE},${PKG_BASE}-headless,${PKG_BASE}-devel")
+            log_info "마이너 버전 고정 설치이므로 installonlypkgs 적용 (기존 설치된 다른 마이너 버전 유지): ${PKG_BASE}*"
+        fi
+        INSTALL_CMD+=("$INSTALL_TARGET")
+
         if [ -n "$IS_INSTALLED" ]; then
             log_success "$INSTALL_TARGET 는 이미 설치되어 있습니다. 설치를 건너뜁니다: $IS_INSTALLED"
-        elif sudo "$PKG_MANAGER" install -y "$INSTALL_TARGET"; then
+        elif "${INSTALL_CMD[@]}"; then
             log_success "$INSTALL_TARGET 패키지 설치 완료"
         else
             log_error "$INSTALL_TARGET 패키지 설치 실패"
