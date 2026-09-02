@@ -222,6 +222,18 @@ fi
 chown -R $ORACLE_OWNER ${ORACLE_BASE}
 chmod -R 755 ${ORACLE_BASE}
 
+# ※ oraInventory(INVENTORY_LOCATION)는 관례상 ORACLE_BASE 하위가 아닌 별도
+#   경로로 지정되는 경우가 흔하다. 그 경우 위 chown -R $ORACLE_OWNER ${ORACLE_BASE}
+#   만으로는 oraInventory 소유권이 바뀌지 않아 root로 남고, oracle 계정으로
+#   실행되는 runInstaller가 중앙 인벤토리(ContentsXML, orainstRoot.sh 생성 등)를
+#   쓰지 못해 조용히 실패한다(oraInventory 안에 logs 디렉토리만 남는 증상으로
+#   나타남). ORACLE_HOME/INVENTORY_LOCATION도 명시적으로 chown한다
+#   (ORACLE_BASE 하위에 중첩돼 있어도 다시 적용될 뿐 무해함).
+chown -R $ORACLE_OWNER "$ORACLE_HOME"
+chmod -R 755 "$ORACLE_HOME"
+chown -R $ORACLE_OWNER "$INVENTORY_LOCATION"
+chmod -R 755 "$INVENTORY_LOCATION"
+
 # ==============================================================================
 # 4. Oracle 계정 작업 (파일 다운로드, 압축 해제, 설치)
 # ==============================================================================
@@ -400,6 +412,28 @@ elif [ -f "${ROOT_SCRIPT_2}" ]; then
     log_info "orainstRoot.sh 실행 완료."
 else
     log_info "orainstRoot.sh 스크립트가 존재하지 않거나 이미 중앙 인벤토리가 생성되어 스킵되었습니다."
+fi
+
+# ==============================================================================
+# 5-1. root 등 다른 계정에서도 공유 라이브러리를 찾을 수 있도록 시스템 전역 등록
+#   oracle 계정은 ~/.bash_profile에 LD_LIBRARY_PATH=$ORACLE_HOME/lib 가 등록돼
+#   sqlplus가 정상 동작하지만, root를 비롯한 다른 계정/프로세스는 이 값을
+#   전혀 모른다. 그 결과 root에서 sqlplus 실행 시
+#     "error while loading shared libraries: libsqlplus.so: cannot open
+#      shared object file: no such file or directory"
+#   가 발생한다. /etc/ld.so.conf.d/ 에 ORACLE_HOME/lib 경로를 등록하고
+#   ldconfig을 실행하면 계정과 무관하게 동적 링커가 라이브러리를 찾을 수
+#   있다(PATH에 sqlplus 자체를 추가하는 것은 별개이며, 여기서는 라이브러리
+#   로딩 오류만 해결한다). 파일명을 고정해서 재설치/버전 변경 시 이전 경로가
+#   쌓이지 않고 항상 최신 ORACLE_HOME으로 덮어써지도록 한다.
+# ==============================================================================
+log_info "시스템 전역 공유 라이브러리 경로 등록 (ldconfig)..."
+LDCONF_FILE="/etc/ld.so.conf.d/oracle-client.conf"
+echo "${ORACLE_HOME}/lib" > "$LDCONF_FILE"
+if ldconfig; then
+    log_success "ldconfig 등록 완료: ${LDCONF_FILE} -> ${ORACLE_HOME}/lib (root 등에서도 sqlplus 라이브러리 로딩 가능)"
+else
+    log_warn "ldconfig 실행에 실패했습니다. root 등 oracle 계정 외의 계정에서 sqlplus 실행 시 라이브러리 오류가 발생할 수 있습니다."
 fi
 
 # ==============================================================================
