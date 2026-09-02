@@ -1,0 +1,39 @@
+INFO:  [Sep 2, 2026 5:16:33 PM] *************** End of CVU Error logs ***************
+INFO:  [Sep 2, 2026 5:16:33 PM] All forked task are completed at state checkPrereqs
+INFO:  [Sep 2, 2026 5:16:33 PM] Completed background operations
+INFO:  [Sep 2, 2026 5:16:33 PM] Waiting for completion of background operations
+INFO:  [Sep 2, 2026 5:16:33 PM] Completed background operations
+INFO:  [Sep 2, 2026 5:16:33 PM] Moved to state <checkPrereqs>
+INFO:  [Sep 2, 2026 5:16:33 PM] Waiting for completion of background operations
+INFO:  [Sep 2, 2026 5:16:33 PM] Completed background operations
+INFO:  [Sep 2, 2026 5:16:33 PM] Validating state <checkPrereqs>
+INFO:  [Sep 2, 2026 5:16:33 PM] Using default Validator configured in the Action class oracle.install.ivw.client.action.PrereqAction
+INFO:  [Sep 2, 2026 5:16:33 PM] ------------------List of failed Tasks------------------
+INFO:  [Sep 2, 2026 5:16:33 PM] *********************************************
+INFO:  [Sep 2, 2026 5:16:33 PM] Swap Size: This is a prerequisite condition to test whether sufficient total swap space is available on the system.
+INFO:  [Sep 2, 2026 5:16:33 PM] Severity:IGNORABLE
+INFO:  [Sep 2, 2026 5:16:33 PM] OverallStatus:VERIFICATION_FAILED
+INFO:  [Sep 2, 2026 5:16:33 PM] *********************************************
+INFO:  [Sep 2, 2026 5:16:33 PM] Users With Same UID: 0: This test checks that multiple users do not exist with user id as "0".
+INFO:  [Sep 2, 2026 5:16:33 PM] Severity:CRITICAL
+INFO:  [Sep 2, 2026 5:16:33 PM] OverallStatus:VERIFICATION_FAILED
+INFO:  [Sep 2, 2026 5:16:33 PM] -----------------End of failed Tasks List----------------
+INFO:  [Sep 2, 2026 5:16:33 PM] Adding ExitStatus PREREQUISITES_NOT_MET to the exit status set
+SEVERE:  [Sep 2, 2026 5:16:33 PM] [FATAL] [INS-13013] Target environment does not meet some mandatory requirements.
+   CAUSE: Some of the mandatory prerequisites are not met. See logs for details. /tmp/InstallActions2026-09-02_05-16-31PM/installActions2026-09-02_05-16-31PM.log
+   ACTION: Identify the list of failed prerequisite checks from the log: /tmp/InstallActions2026-09-02_05-16-31PM/installActions2026-09-02_05-16-31PM.log. Then either from the log file or from installation manual find the appropriate configuration to meet the prerequisites and fix it manually.
+INFO:  [Sep 2, 2026 5:16:33 PM] Advice is ABORT
+INFO:  [Sep 2, 2026 5:16:33 PM] Adding ExitStatus INVALID_USER_INPUT to the exit status set
+INFO:  [Sep 2, 2026 5:16:33 PM] Completed validating state <checkPrereqs>
+INFO:  [Sep 2, 2026 5:16:33 PM] Terminating all background operations
+INFO:  [Sep 2, 2026 5:16:33 PM] Terminated all background operations
+INFO:  [Sep 2, 2026 5:16:33 PM] Finding the most appropriate exit status for the current application
+INFO:  [Sep 2, 2026 5:16:33 PM] The inventory does not exist, but the location of the inventory is known: /oracle/oraInventory
+INFO:  [Sep 2, 2026 5:16:33 PM] Finding the most appropriate exit status for the current application
+INFO:  [Sep 2, 2026 5:16:33 PM] Exit Status is -3
+INFO:  [Sep 2, 2026 5:16:33 PM] Shutdown Oracle Database Client 19c Installer
+INFO:  [Sep 2, 2026 5:16:33 PM] Unloading Setup Driver
+
+
+
+   
