@@ -437,6 +437,27 @@ else
 fi
 
 # ==============================================================================
+# 5-2. root 등 다른 계정 로그인 셸에도 ORACLE_HOME/PATH 자동 적용
+#   ldconfig은 공유 라이브러리 "로딩" 문제만 해결한다. SQL*Plus는 실행되고
+#   나서도 자체 메시지 파일(mesg/sp1<lang>.msb 등)을 찾으려고 ORACLE_HOME
+#   환경변수를 참조하는데, 이게 없는 계정에서는
+#     "Error 6 initializing SQL*Plus / SP2-0667 ... / SP2-0750: you may
+#      need to set ORACLE_HOME to your Oracle software directory"
+#   로 실패한다. oracle 계정 ~/.bash_profile 에만 ORACLE_HOME을 등록해뒀으므로,
+#   /etc/profile.d/ 에 등록해 모든 계정의 로그인 셸에 자동 적용되게 한다.
+#   ※ 로그인 셸(재로그인/su -)에만 적용됨 — 이미 열려 있는 셸이나 cron 등
+#     비로그인 프로세스는 반영되지 않으니 별도로 export 하거나 재로그인 필요.
+# ==============================================================================
+log_info "시스템 전역 ORACLE_HOME/PATH 등록 (/etc/profile.d)..."
+PROFILED_FILE="/etc/profile.d/oracle-client.sh"
+cat > "$PROFILED_FILE" << EOF
+export ORACLE_HOME=${ORACLE_HOME}
+export PATH=\$ORACLE_HOME/bin:\$PATH
+EOF
+chmod 644 "$PROFILED_FILE"
+log_success "등록 완료: ${PROFILED_FILE} (재로그인 후 모든 계정에서 ORACLE_HOME/PATH 자동 적용)"
+
+# ==============================================================================
 # 6. 설치 결과 최종 검증 (.bash_profile source 로드 추가)
 # ==============================================================================
 log_info "Oracle Client 설치 결과 검증 시작..."
