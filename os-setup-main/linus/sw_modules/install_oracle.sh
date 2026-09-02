@@ -364,6 +364,7 @@ echo "CV_ASSUME_DISTID = ${OEL_VALUE}"
 export CV_ASSUME_DISTID=${OEL_VALUE}
 
 CV_ASSUME_DISTID=${OEL_VALUE} ./runInstaller -silent \\
+  -ignoreSysPrereqs \\
   -responseFile ${ORACLE_HOME}/install/response/clientsetup.rsp \\
   oracle.install.option=INSTALL_DB_SWONLY \\
   oracle.install.client.installType=Administrator \\
