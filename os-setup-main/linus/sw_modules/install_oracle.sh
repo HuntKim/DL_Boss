@@ -220,7 +220,7 @@ if ! id "oracle" &>/dev/null; then
 fi
 
 chown -R $ORACLE_OWNER ${ORACLE_BASE}
-chmod -R 755 ${ORACLE_BASE}
+chmod -R 750 ${ORACLE_BASE}
 
 # ※ oraInventory(INVENTORY_LOCATION)는 관례상 ORACLE_BASE 하위가 아닌 별도
 #   경로로 지정되는 경우가 흔하다. 그 경우 위 chown -R $ORACLE_OWNER ${ORACLE_BASE}
@@ -230,9 +230,9 @@ chmod -R 755 ${ORACLE_BASE}
 #   나타남). ORACLE_HOME/INVENTORY_LOCATION도 명시적으로 chown한다
 #   (ORACLE_BASE 하위에 중첩돼 있어도 다시 적용될 뿐 무해함).
 chown -R $ORACLE_OWNER "$ORACLE_HOME"
-chmod -R 755 "$ORACLE_HOME"
+chmod -R 750 "$ORACLE_HOME"
 chown -R $ORACLE_OWNER "$INVENTORY_LOCATION"
-chmod -R 755 "$INVENTORY_LOCATION"
+chmod -R 750 "$INVENTORY_LOCATION"
 
 # ==============================================================================
 # 4. Oracle 계정 작업 (파일 다운로드, 압축 해제, 설치)
@@ -328,9 +328,13 @@ fi
 
 # 4-2. root 권한에서 clientsetup.rsp 치환 및 전체 권한 소유권 재설정
 log_info "clientsetup.rsp 경로 변수 치환 및 권한 재설정 실행..."
-# 압축 풀린 전체 파일/디렉토리에 oracle 소유권 및 775/755 권한 부여
+# 압축 풀린 전체 파일/디렉토리에 oracle 소유권 및 750(그룹까지만 접근) 권한 부여
+# ※ 이전에는 755(world-readable)였으나, 설치 로그/tnsnames.ora 등이 이 서버의
+#   무관한 로컬 계정에게까지 읽히는 문제로 750으로 강화함. oracle 소유자와
+#   ${UNIX_GROUP_NAME}(dba/oinstall) 그룹 계정은 그대로 접근 가능하고,
+#   root는 DAC 권한 체크를 우회하므로 root sqlplus 관련 조치에도 영향 없음.
 chown -R $ORACLE_OWNER ${ORACLE_BASE}
-chmod -R 755 ${ORACLE_BASE}
+chmod -R 750 ${ORACLE_BASE}
 
 ### if [ -f "${RSP_FILE}" ]; then
 ###     sed -i "s|\\\$ORACLE_BASE|${ORACLE_BASE}|g" "${RSP_FILE}"
