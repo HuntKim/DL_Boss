@@ -33,7 +33,8 @@ os-setup/windows/
 ├── storage/       # Storage-Gen.ps1 / Storage-Rollback.ps1 / Storage-Verify.ps1
 ├── permission/    # Permission-Apply.ps1 / Permission-Rollback.ps1 / Permission-Verify.ps1
 ├── sw_modules/    # (os-setup-main에서 그대로 가져옴, 수정 없음) setup_sw.ps1, install_*.ps1
-└── monitoring/    # (os-setup-main에서 그대로 가져옴, 수정 없음) setup_monitoring.ps1
+├── monitoring/    # (os-setup-main에서 그대로 가져옴, 수정 없음) setup_monitoring.ps1
+└── logs/          # 실행 로그 자동 생성 위치 - <hostname>.log (git에는 커밋 안 됨)
 ```
 
 **`sw_modules`/`monitoring`은 `os-setup-main`에서 그대로 복사해온 것이다**
@@ -102,6 +103,21 @@ Linux 쪽과 동일한 원칙 - 모든 `*-Gen.ps1`/`*-Apply.ps1`은 "실제로
 직접 순회하며 삭제하는 롤백 스크립트는 없다(Administrators 같은 내장
 그룹을 잘못 건드리는 사고를 막기 위함 - Linux 쪽 개발 중 실제로 겪은
 문제라 Windows 쪽에도 처음부터 이 원칙을 적용함).
+
+## 실행 로그 취합
+
+`Account-Gen.ps1`을 직접 실행하든 `init.ps1`로 실행하든, 화면에 뜨는
+내용이 그대로 `logs\<hostname>.log`에도 이어서 기록된다(실행마다
+`실행: <스크립트명> (PID: ...)` 구분선이 붙어서 어느 스크립트가 언제
+실행됐는지 한 파일에서 시간순으로 볼 수 있음). `common.ps1`의
+`Log-Info`/`Log-Warn`/`Log-Error`/`Log-Success` 공통 함수 안에서 처리
+하므로 이 함수들을 쓰는 모든 스크립트(SW 모듈/모니터링 제외 - 그쪽은
+`windows_common.ps1`을 쓰는 별개 로깅)에 자동 적용된다. PowerShell은
+dot-source된 파일 안에서 "어느 최상위 스크립트가 실행 중인지" 자동으로
+알아내는 안전한 방법이 마땅치 않아서, 각 최상위 스크립트가 `common.ps1`을
+dot-source 하기 전에 `$Global:ScriptName`을 직접 지정해둔다. `logs\`
+디렉터리는 git에 커밋되지만(`.gitkeep`), 실제 `.log` 파일은 `.gitignore`로
+제외된다.
 
 ## 알려진 제한사항 (실서버 검증 시 확인 필요)
 

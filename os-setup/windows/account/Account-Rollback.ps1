@@ -14,6 +14,8 @@ param(
     [switch]$Yes
 )
 
+$Global:ScriptName = $MyInvocation.MyCommand.Name
+
 $CurrentDir = $PSScriptRoot
 $ConfigDir = Join-Path (Split-Path $CurrentDir -Parent) "config"
 . (Join-Path $ConfigDir "common.ps1")

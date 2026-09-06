@@ -29,7 +29,8 @@ os-setup/linux/
 ├── storage/           # 스토리지(LVM): storage_gen.sh / storage_rollback.sh / storage_verify.sh
 ├── permission/        # 디렉터리 권한: permission_apply.sh / permission_rollback.sh / permission_verify.sh
 ├── sw_modules/        # (os-setup-main에서 그대로 가져옴, 수정 없음) SW 설치: setup_sw.sh, install_*.sh
-└── monitoring/        # (os-setup-main에서 그대로 가져옴, 수정 없음) 모니터링 에이전트: setup_monitoring.sh
+├── monitoring/        # (os-setup-main에서 그대로 가져옴, 수정 없음) 모니터링 에이전트: setup_monitoring.sh
+└── logs/              # 실행 로그 자동 생성 위치 - <hostname>.log (git에는 커밋 안 됨)
 ```
 
 **`sw_modules`/`monitoring`은 `os-setup-main`에서 그대로 복사해온 것이다** -
@@ -116,6 +117,18 @@ bash의 `set -u`(nounset) 아래에서는 완전히 선언되지 않은 배열�
 "unbound variable" 에러가 난다(테스트로 확인). 그래서 `common.env`는 호스트
 env 파일을 소스하기 전에 모든 배열을 빈 값으로 미리 초기화하고, 스크립트
 내에서 새로 선언하는 연관 배열은 항상 `declare -A NAME=()` 형태로 쓴다.
+
+### 6. 모든 스크립트 실행 로그가 `logs/<hostname>.log` 하나로 취합된다
+`account_gen.sh`를 직접 실행하든 `init.sh`로 실행하든, 어떤 스크립트를
+실행해도 화면에 뜨는 내용이 그대로 `logs/<hostname>.log`에도 이어서
+기록된다(실행마다 `실행: <스크립트명> (PID: ...)` 구분선이 붙어서 어떤
+스크립트가 언제 실행됐는지 한 파일에서 시간순으로 볼 수 있음). 스크립트
+마다 따로 구현한 게 아니라 `common.env`의 `log_info`/`log_warn`/
+`log_error`/`log_success` 공통 함수 안에서 처리하므로, 이 함수들을 쓰는
+모든 스크립트(SW 모듈/모니터링 제외 - 그쪽은 `linux_common.env`를 쓰는
+별개 로깅이라 여기 포함되지 않음)에 자동 적용된다. `logs/` 디렉터리 자체는
+git에 커밋되지만(`.gitkeep`), 실제 `.log` 파일은 서버별 실행 이력이라
+`.gitignore`로 제외된다.
 
 ## 검증 현황
 

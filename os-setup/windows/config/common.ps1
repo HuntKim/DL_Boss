@@ -10,10 +10,10 @@
 # ==============================================================================
 
 function Get-TimeStamp { Get-Date -Format "yyyy-MM-dd HH:mm:ss" }
-function Log-Info    ([string]$msg) { Write-Host "[INFO]    $(Get-TimeStamp) - [$env:COMPUTERNAME] $msg" -ForegroundColor Cyan }
-function Log-Warn    ([string]$msg) { Write-Host "[WARN]    $(Get-TimeStamp) - [$env:COMPUTERNAME] $msg" -ForegroundColor Yellow }
-function Log-Error   ([string]$msg) { Write-Host "[ERROR]   $(Get-TimeStamp) - [$env:COMPUTERNAME] $msg" -ForegroundColor Red }
-function Log-Success ([string]$msg) { Write-Host "[SUCCESS] $(Get-TimeStamp) - [$env:COMPUTERNAME] $msg" -ForegroundColor Green }
+function Log-Info    ([string]$msg) { $line = "[INFO]    $(Get-TimeStamp) - [$env:COMPUTERNAME] $msg"; Write-Host $line -ForegroundColor Cyan; Add-Content -Path $Global:LogFile -Value $line -ErrorAction SilentlyContinue }
+function Log-Warn    ([string]$msg) { $line = "[WARN]    $(Get-TimeStamp) - [$env:COMPUTERNAME] $msg"; Write-Host $line -ForegroundColor Yellow; Add-Content -Path $Global:LogFile -Value $line -ErrorAction SilentlyContinue }
+function Log-Error   ([string]$msg) { $line = "[ERROR]   $(Get-TimeStamp) - [$env:COMPUTERNAME] $msg"; Write-Host $line -ForegroundColor Red; Add-Content -Path $Global:LogFile -Value $line -ErrorAction SilentlyContinue }
+function Log-Success ([string]$msg) { $line = "[SUCCESS] $(Get-TimeStamp) - [$env:COMPUTERNAME] $msg"; Write-Host $line -ForegroundColor Green; Add-Content -Path $Global:LogFile -Value $line -ErrorAction SilentlyContinue }
 
 # ------------------------------------------------------------------------------
 # 경로 계산
@@ -29,6 +29,26 @@ $Global:BackupDir               = "C:\os-setup-backup"   # rollback용 생성 �
 #   이 프로젝트도 같은 config\env\ 를 썼는데, 계정/스토리지 정의와 SW
 #   모듈 오버라이드가 같은 파일(같은 이름)을 가리키게 되어 헷갈린다는
 #   지적을 받아 os_env\ 로 분리함.
+
+# ------------------------------------------------------------------------------
+# 실행 로그 취합
+#   이 호스트에서 어떤 스크립트가 언제 실행됐는지 한 곳(logs\<hostname>.log)
+#   에서 이어서 볼 수 있도록, 모든 Log-Info/Log-Warn/Log-Error/Log-Success
+#   호출이 화면 출력과 동시에 이 파일에도 누적 기록된다. PowerShell은
+#   dot-source된 파일 안에서 "어느 최상위 스크립트가 실행 중인지"를
+#   자동으로 알아내는 안전한 방법이 마땅치 않아, 각 최상위 스크립트가
+#   dot-source 하기 전에 $Global:ScriptName 을 직접 지정해둔다(각 스크립트
+#   상단에 이미 반영됨).
+# ------------------------------------------------------------------------------
+$Global:LogDir = Join-Path $OsSetupWindowsDir "logs"
+if (-not (Test-Path $LogDir)) { New-Item -ItemType Directory -Force -Path $LogDir | Out-Null }
+$Global:LogFile = Join-Path $LogDir "$($env:COMPUTERNAME).log"
+
+$_scriptNameForLog = if ($Global:ScriptName) { $Global:ScriptName } else { "(알 수 없는 스크립트)" }
+Add-Content -Path $LogFile -Value ""
+Add-Content -Path $LogFile -Value "================================================================"
+Add-Content -Path $LogFile -Value "[$(Get-TimeStamp)] 실행: $_scriptNameForLog (PID: $PID)"
+Add-Content -Path $LogFile -Value "================================================================"
 
 # ------------------------------------------------------------------------------
 # 호스트별 env 파일 로드

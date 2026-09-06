@@ -1,0 +1,5 @@
+# 이 디렉터리는 실행 시점에 logs/<hostname>.log 로 자동 생성/누적된다
+# (config/common.env의 log_info 등 함수 참고). 실제 로그 파일은 각 서버의
+# 실행 이력이라 git에는 올리지 않는다.
+*.log
+!.gitkeep
