@@ -12,6 +12,7 @@ B Cloud 베어메탈 → A Cloud VM 마이그레이션 "단계 2": Assessment(�
 ```
 os-setup/linux/
 ├── init.sh                  # 6개 모듈을 순서대로 실행하는 오케스트레이터
+├── final_verify.sh          # 적용된 전체 내용을 실제 명령 결과 그대로 캡처하는 최종 확인 리포트
 ├── config/
 │   ├── common.env           # (신규 4모듈용) 공통 로그 함수 + env 로더 + manifest 헬퍼
 │   ├── linux_common.env     # (SW모듈용, os-setup-main에서 그대로 가져옴) 로그 함수 등
@@ -54,7 +55,7 @@ hostname 기준 설정을 읽어 동작한다. 원래부터 rollback/verify 스�
 
 1. `config/os_env/example_host.env.template`을 복사해 `config/os_env/<hostname>.env`로
    저장하고(파일명은 `hostname -s` 결과와 정확히 일치해야 함), Assessment
-   결과(`accounts_gen_draft.csv`, `filesystem_gen_draft.txt` 등)를 참고해
+   결과(`os_env_draft.env`, `os_param_profile_draft.param.conf`)를 참고해
    값을 채운다.
 2. 신규 VM에서 root로 실행:
    ```bash
@@ -65,6 +66,11 @@ hostname 기준 설정을 읽어 동작한다. 원래부터 rollback/verify 스�
    개별 모듈만 실행하려면 각 디렉터리의 스크립트를 직접 실행해도 된다
    (예: `./account/account_gen.sh -y`).
 3. 프롬프트 확인 없이(예: 자동화 파이프라인) 실행하려면 `-y`/`--yes`를 붙인다.
+4. 적용을 다 마친 뒤 최종 확인용으로 `sudo ./final_verify.sh`를 실행하면,
+   `init.sh verify`의 [PASS]/[FAIL] 판정표와 달리 실제 터미널에서 그
+   명령을 직접 친 것과 동일한 화면(`tail -n /etc/passwd`, `sysctl <key>`,
+   `df -h <mount>`, `ls -ld <path>` 등)을 그대로 캡처해 `logs/<hostname>
+   _final_report_<timestamp>.txt` 파일 하나로 남긴다(감사/인수인계 증적용).
 
 ## 설계 원칙
 

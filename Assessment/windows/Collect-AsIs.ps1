@@ -1,4 +1,4 @@
-# ==============================================================================
+﻿# ==============================================================================
 # AS-IS 서버 정보 수집 스크립트 (Windows Server)
 # ==============================================================================
 # 목적: B Cloud 베어메탈 -> A Cloud VM 마이그레이션 "단계 1" 수집 스크립트.
@@ -65,9 +65,9 @@ Log-Info "[1/4] 로컬 계정/그룹 정보 수집 중..."
 $AccountsRaw = Join-Path $HostOutDir "accounts_raw.txt"
 $sb = New-Object System.Text.StringBuilder
 [void]$sb.AppendLine("===== Get-LocalUser =====")
-Get-LocalUser | Format-Table Name, Enabled, Description, PasswordExpires, LastLogon -AutoSize | Out-String | ForEach-Object { [void]$sb.AppendLine($_) }
+Get-LocalUser | Format-Table Name, Enabled, Description, PasswordExpires, LastLogon -AutoSize | Out-String -Width 200 | ForEach-Object { [void]$sb.AppendLine($_) }
 [void]$sb.AppendLine("===== Get-LocalGroup =====")
-Get-LocalGroup | Format-Table Name, Description -AutoSize | Out-String | ForEach-Object { [void]$sb.AppendLine($_) }
+Get-LocalGroup | Format-Table Name, Description -AutoSize | Out-String -Width 200 | ForEach-Object { [void]$sb.AppendLine($_) }
 [void]$sb.AppendLine("===== 그룹별 멤버 =====")
 foreach ($grp in Get-LocalGroup) {
     [void]$sb.AppendLine("--- $($grp.Name) ---")
@@ -116,20 +116,20 @@ $sb2 = New-Object System.Text.StringBuilder
 [void]$sb2.AppendLine("===== systeminfo =====")
 [void]$sb2.AppendLine((systeminfo | Out-String))
 [void]$sb2.AppendLine("===== 시간대 (Get-TimeZone) =====")
-[void]$sb2.AppendLine((Get-TimeZone | Format-List | Out-String))
+[void]$sb2.AppendLine((Get-TimeZone | Format-List | Out-String -Width 200))
 [void]$sb2.AppendLine("===== 시스템 환경 변수 =====")
-[void]$sb2.AppendLine((Get-ChildItem Env: | Format-Table -AutoSize | Out-String))
+[void]$sb2.AppendLine((Get-ChildItem Env: | Format-Table -AutoSize | Out-String -Width 200))
 [void]$sb2.AppendLine("===== 방화벽 프로파일 상태 =====")
-try { [void]$sb2.AppendLine((Get-NetFirewallProfile | Format-Table Name, Enabled -AutoSize | Out-String)) } catch { [void]$sb2.AppendLine("(조회 실패: $($_.Exception.Message))") }
+try { [void]$sb2.AppendLine((Get-NetFirewallProfile | Format-Table Name, Enabled -AutoSize | Out-String -Width 200)) } catch { [void]$sb2.AppendLine("(조회 실패: $($_.Exception.Message))") }
 [void]$sb2.AppendLine("===== 네트워크 어댑터 구성 =====")
-try { [void]$sb2.AppendLine((Get-NetIPConfiguration | Format-List | Out-String)) } catch { [void]$sb2.AppendLine("(조회 실패: $($_.Exception.Message))") }
+try { [void]$sb2.AppendLine((Get-NetIPConfiguration | Format-List | Out-String -Width 200)) } catch { [void]$sb2.AppendLine("(조회 실패: $($_.Exception.Message))") }
 $sb2.ToString() | Out-File -FilePath $OsParamFile -Encoding UTF8
 
 $TaskFile = Join-Path $HostOutDir "scheduled_tasks.txt"
 try {
     Get-ScheduledTask | Where-Object { $_.TaskPath -notlike "\Microsoft*" } |
         Select-Object TaskName, TaskPath, State |
-        Format-Table -AutoSize | Out-String | Out-File -FilePath $TaskFile -Encoding UTF8
+        Format-Table -AutoSize | Out-String -Width 200 | Out-File -FilePath $TaskFile -Encoding UTF8
 } catch {
     "예약 작업 조회 실패: $($_.Exception.Message)" | Out-File -FilePath $TaskFile -Encoding UTF8
 }
@@ -148,13 +148,13 @@ Log-Info "[3/4] Storage 정보 수집 중..."
 $StorageFile = Join-Path $HostOutDir "storage.txt"
 $sb3 = New-Object System.Text.StringBuilder
 [void]$sb3.AppendLine("===== Get-Volume =====")
-[void]$sb3.AppendLine((Get-Volume | Format-Table -AutoSize | Out-String))
+[void]$sb3.AppendLine((Get-Volume | Format-Table -AutoSize | Out-String -Width 200))
 [void]$sb3.AppendLine("===== Get-Partition =====")
-try { [void]$sb3.AppendLine((Get-Partition | Format-Table -AutoSize | Out-String)) } catch { [void]$sb3.AppendLine("(조회 실패: $($_.Exception.Message))") }
+try { [void]$sb3.AppendLine((Get-Partition | Format-Table -AutoSize | Out-String -Width 200)) } catch { [void]$sb3.AppendLine("(조회 실패: $($_.Exception.Message))") }
 [void]$sb3.AppendLine("===== Get-Disk =====")
-try { [void]$sb3.AppendLine((Get-Disk | Format-Table -AutoSize | Out-String)) } catch { [void]$sb3.AppendLine("(조회 실패: $($_.Exception.Message))") }
+try { [void]$sb3.AppendLine((Get-Disk | Format-Table -AutoSize | Out-String -Width 200)) } catch { [void]$sb3.AppendLine("(조회 실패: $($_.Exception.Message))") }
 [void]$sb3.AppendLine("===== Get-PSDrive (파일시스템) =====")
-[void]$sb3.AppendLine((Get-PSDrive -PSProvider FileSystem | Format-Table -AutoSize | Out-String))
+[void]$sb3.AppendLine((Get-PSDrive -PSProvider FileSystem | Format-Table -AutoSize | Out-String -Width 200))
 $sb3.ToString() | Out-File -FilePath $StorageFile -Encoding UTF8
 
 $systemDriveLetter = $env:SystemDrive.TrimEnd(':')
@@ -189,7 +189,7 @@ Get-ItemProperty $uninstallPaths -ErrorAction SilentlyContinue |
     Where-Object { $_.DisplayName } |
     Select-Object DisplayName, DisplayVersion, Publisher |
     Sort-Object DisplayName |
-    Format-Table -AutoSize | Out-String | Out-File -FilePath $SwRawFile -Encoding UTF8
+    Format-Table -AutoSize | Out-String -Width 200 | Out-File -FilePath $SwRawFile -Encoding UTF8
 
 $swEntries = New-Object System.Collections.Generic.List[string]
 

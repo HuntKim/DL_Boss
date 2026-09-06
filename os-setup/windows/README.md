@@ -17,6 +17,7 @@ OS 파라미터/스토리지 모듈은 아예 없었다. 이 폴더의 os-parame
 ```
 os-setup/windows/
 ├── init.ps1                 # 6개 모듈을 순서대로 실행하는 오케스트레이터
+├── Final-Verify.ps1          # 적용된 전체 내용을 실제 명령 결과 그대로 캡처하는 최종 확인 리포트
 ├── config/
 │   ├── common.ps1           # (신규 4모듈용) 공통 로그 함수 + env 로더 + manifest 헬퍼
 │   ├── windows_common.ps1   # (SW모듈용, os-setup-main에서 그대로 가져옴)
@@ -67,6 +68,11 @@ os-setup/windows/
    방지 - BOM이 없으면 UTF-8로 인식되지 않고 CP949 등으로 오인식될 수
    있음). 만약 다른 도구로 이 파일들을 다시 저장한다면 UTF-8(BOM 포함)
    인코딩을 유지해야 한다.
+3. 적용을 다 마친 뒤 최종 확인용으로 `Final-Verify.ps1`을 실행하면,
+   `init.ps1 -Mode verify`의 [PASS]/[FAIL] 판정표와 달리 실제 PowerShell
+   에서 그 명령을 직접 친 것과 동일한 화면(`Get-LocalUser`, `Get-Volume`,
+   `Get-Acl` 등)을 그대로 캡처해 `logs\<hostname>_final_report_<timestamp>
+   .txt` 파일 하나로 남긴다(감사/인수인계 증적용).
 
 ## 계정 초기 비밀번호는 호스트 env에 하나로 통일해서 넣는다
 
@@ -143,6 +149,19 @@ dot-source된 파일 안에서 "어느 최상위 스크립트가 실행 중인�
 dot-source 하기 전에 `$Global:ScriptName`을 직접 지정해둔다. `logs\`
 디렉터리는 git에 커밋되지만(`.gitkeep`), 실제 `.log` 파일은 `.gitignore`로
 제외된다.
+
+## 설계 메모: `Format-Table`/`Format-List`는 반드시 `Out-String -Width`와 함께
+
+콘솔이 없는 비대화형 실행 환경(`$Host.UI.RawUI.WindowSize`가 `-1,-1`인
+경우 - 이 리포지토리 개발 환경에서 실제로 재현/확인함)에서는 PowerShell이
+테이블/목록 열 너비를 계산하지 못해 `Format-Table ... | Out-String`,
+`Format-List ... | Out-String`의 출력이 **완전히 빈 문자열이 된다**(에러도
+안 남기고 조용히 비어버림). 이 문제를 겪은 뒤 이 저장소의 모든
+`Format-Table`/`Format-List` 뒤에는 `Out-String -Width 200`처럼 명시적
+너비를 붙였다(`Final-Verify.ps1`, `Collect-AsIs.ps1` 등). **앞으로 이
+패턴을 새로 추가할 때도 반드시 `-Width`를 붙일 것** - 실서버의 실제
+콘솔에서 직접 실행할 땐 문제가 안 보이다가, 원격 실행/예약 작업/CI처럼
+콘솔이 없는 방식으로 실행하면 조용히 빈 리포트가 나올 수 있다.
 
 ## 알려진 제한사항 (실서버 검증 시 확인 필요)
 
