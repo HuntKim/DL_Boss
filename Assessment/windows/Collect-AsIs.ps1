@@ -49,16 +49,16 @@ if (-not $IsAdmin) {
 
 # ==============================================================================
 # 1. 계정/그룹 정보 (비밀번호는 절대 수집하지 않음)
-#   (a) accounts_raw.txt        : Get-LocalUser/Get-LocalGroup 원본 (감사/참고용)
-#   (b) accounts_gen_draft.ps1  : os-setup/windows/config/os_env/<hostname>.ps1
-#       가 그대로 기대하는 $HostGroups/$HostAccounts 배열 형식으로 생성한
-#       draft (CSV 아님). 활성화된 "실제 업무용" 계정만 추린다.
-#       기본 내장 계정(Administrator/Guest/DefaultAccount/WDAGUtilityAccount)과
-#       비활성화된 계정은 제외한다. 그룹도 내장(Administrators/Users 등)은
-#       제외하고 커스텀 그룹만 $HostGroups에 담는다(내장 그룹은 SID가
-#       S-1-5-32-* 패턴이라는 점으로 판별 - 그룹명은 로캘에 따라 달라질 수
-#       있어 이름 대신 SID로 구분함). 비밀번호 필드는 두지 않는다 - TO-BE
-#       생성 시 Account-Gen.ps1이 임시 비밀번호를 자동 생성한다.
+#   accounts_raw.txt : Get-LocalUser/Get-LocalGroup 원본 (감사/참고용)
+#   $HostGroups/$HostAccounts 배열은 이 단계에서 만들어서 마지막에
+#   os_env_draft.ps1 하나로 (스토리지/권한 배열과 함께) 합쳐서 출력한다.
+#   활성화된 "실제 업무용" 계정만 추린다.
+#   기본 내장 계정(Administrator/Guest/DefaultAccount/WDAGUtilityAccount)과
+#   비활성화된 계정은 제외한다. 그룹도 내장(Administrators/Users 등)은
+#   제외하고 커스텀 그룹만 $HostGroups에 담는다(내장 그룹은 SID가
+#   S-1-5-32-* 패턴이라는 점으로 판별 - 그룹명은 로캘에 따라 달라질 수
+#   있어 이름 대신 SID로 구분함). 비밀번호 필드는 두지 않는다 - TO-BE
+#   생성 시 Account-Gen.ps1이 임시 비밀번호를 자동 생성한다.
 # ==============================================================================
 Log-Info "[1/4] 로컬 계정/그룹 정보 수집 중..."
 
@@ -81,7 +81,6 @@ foreach ($grp in Get-LocalGroup) {
 }
 $sb.ToString() | Out-File -FilePath $AccountsRaw -Encoding UTF8
 
-$AccountsEnvDraft = Join-Path $HostOutDir "accounts_gen_draft.ps1"
 $builtinNames = @('Administrator', 'Guest', 'DefaultAccount', 'WDAGUtilityAccount')
 
 # 내장 로컬 그룹은 SID가 S-1-5-32-* 패턴(BUILTIN 도메인)을 따른다.
@@ -105,20 +104,7 @@ foreach ($u in (Get-LocalUser | Where-Object { $builtinNames -notcontains $_.Nam
     $accountLines.Add("    @{ User = `"$($u.Name)`"; Groups = @($groupsFormatted) }")
 }
 
-$draftContent = New-Object System.Collections.Generic.List[string]
-$draftContent.Add("# os-setup/windows/config/os_env/$Hostname.ps1 에 그대로 붙여넣을 draft")
-$draftContent.Add("# 비밀번호는 포함하지 않음 - Account-Gen.ps1이 임시 비밀번호를 자동 생성함")
-$draftContent.Add("`$HostGroups = @(")
-$draftContent.AddRange($groupLines)
-$draftContent.Add(")")
-$draftContent.Add("")
-$draftContent.Add("`$HostAccounts = @(")
-$draftContent.AddRange($accountLines)
-$draftContent.Add(")")
-$draftContent | Out-File -FilePath $AccountsEnvDraft -Encoding UTF8
-
-Log-Warn "$AccountsEnvDraft 에는 비밀번호를 포함하지 않았습니다. TO-BE 계정 생성 시 Account-Gen.ps1이 임시 비밀번호를 자동 생성합니다."
-Log-Success "계정/그룹 수집 완료: $AccountsEnvDraft (원본: accounts_raw.txt)"
+Log-Success "계정/그룹 수집 완료 (계정 $($accountLines.Count)건, 그룹 $($groupLines.Count)건 - 원본: $AccountsRaw)"
 
 # ==============================================================================
 # 2. OS 파라미터 / 예약 작업 등 서버 설정 값
@@ -152,6 +138,10 @@ Log-Success "OS 파라미터/예약작업 수집 완료: $OsParamFile, $TaskFile
 
 # ==============================================================================
 # 3. Storage 정보 수집 (볼륨/파티션 구성)
+#   storage.txt : Get-Volume/Get-Partition/Get-Disk 원본
+#   $HostVolumes 배열은 이 단계에서 만들어서 마지막에 os_env_draft.ps1
+#   하나로 (계정 배열과 함께) 합쳐서 출력한다. OS가 설치된 시스템 드라이브
+#   (보통 C:)와 이름 없는 특수 볼륨(예약/복구 파티션 등)은 제외한다.
 # ==============================================================================
 Log-Info "[3/4] Storage 정보 수집 중..."
 
@@ -167,7 +157,18 @@ try { [void]$sb3.AppendLine((Get-Disk | Format-Table -AutoSize | Out-String)) } 
 [void]$sb3.AppendLine((Get-PSDrive -PSProvider FileSystem | Format-Table -AutoSize | Out-String))
 $sb3.ToString() | Out-File -FilePath $StorageFile -Encoding UTF8
 
-Log-Success "Storage 정보 수집 완료: $StorageFile"
+$systemDriveLetter = $env:SystemDrive.TrimEnd(':')
+$volumeLines = New-Object System.Collections.Generic.List[string]
+$dataVolumes = Get-Volume | Where-Object {
+    $_.DriveLetter -and $_.DriveLetter -ne $systemDriveLetter -and $_.DriveType -eq 'Fixed'
+}
+foreach ($v in $dataVolumes) {
+    $sizeGb = [math]::Round($v.Size / 1GB)
+    $label = if ($v.FileSystemLabel) { $v.FileSystemLabel } else { "DATA" }
+    $volumeLines.Add("    `"$($v.DriveLetter):$($sizeGb):$($label)`"")
+}
+
+Log-Success "Storage 정보 수집 완료 (커스텀 드라이브 $($volumeLines.Count)건 - 원본: $StorageFile)"
 
 # ==============================================================================
 # 4. SW 설치 정보 / 버전 수집
@@ -231,7 +232,50 @@ if ($swEntries.Count -gt 0) {
 Log-Success "SW 정보 수집 완료: $SwRawFile, $SwMappingDraft"
 
 # ==============================================================================
-# 5. 전송 편의를 위한 압축
+# 5. 계정/스토리지 draft를 하나의 os_env_draft.ps1 로 합쳐서 출력
+#   os-setup/windows/config/os_env/<hostname>.ps1 이 그대로 기대하는
+#   $HostGroups/$HostAccounts/$HostVolumes/$HostDirPermissions 배열을
+#   전부 담은 단일 파일로 만든다 (CSV 아님). 검토 후 파일명을
+#   <hostname>.ps1 로 바꿔서 config/os_env/ 아래에 그대로 두면 된다.
+#   $HostDirPermissions(NTFS ACL)와 $HostOsParamProfile은 AS-IS 값만으로
+#   자동 판단하기 어려워(권한 조합이 복잡하거나, 여러 호스트를 묶어
+#   프로파일명을 정하는 건 사람의 판단 영역) 빈 배열/값으로 남겨둔다.
+# ==============================================================================
+$OsEnvDraft = Join-Path $HostOutDir "os_env_draft.ps1"
+$draftContent = New-Object System.Collections.Generic.List[string]
+$draftContent.Add("# os-setup/windows/config/os_env/$Hostname.ps1 후보 - 검토 후")
+$draftContent.Add("# 이 파일명을 $Hostname.ps1 로 바꿔서 config/os_env/ 아래에 두면 된다.")
+$draftContent.Add("# 비밀번호는 포함하지 않음 - Account-Gen.ps1이 임시 비밀번호를 자동 생성함")
+$draftContent.Add("")
+$draftContent.Add("`$HostGroups = @(")
+$draftContent.AddRange($groupLines)
+$draftContent.Add(")")
+$draftContent.Add("")
+$draftContent.Add("`$HostAccounts = @(")
+$draftContent.AddRange($accountLines)
+$draftContent.Add(")")
+$draftContent.Add("")
+$draftContent.Add("`$HostVolumes = @(")
+$draftContent.AddRange($volumeLines)
+$draftContent.Add(")")
+if ($volumeLines.Count -eq 0) {
+    $draftContent.Add("# (시스템 드라이브 외 별도 구성된 드라이브가 발견되지 않았습니다)")
+}
+$draftContent.Add("")
+$draftContent.Add("# TODO: NTFS 권한은 자동 판단하기 어려워 비워둠 - 형식: `"경로:계정또는그룹:권한수준`"")
+$draftContent.Add("# (FullControl/Modify/ReadAndExecute 중 하나)")
+$draftContent.Add("`$HostDirPermissions = @(")
+$draftContent.Add(")")
+$draftContent.Add("")
+$draftContent.Add("# TODO: config/os_param_profiles/ 아래 적절한 프로파일명을 정해서 채우세요")
+$draftContent.Add("# (AS-IS 값만으로는 자동 판단할 수 없음 - os_parameters.txt 참고)")
+$draftContent.Add("`$HostOsParamProfile = `"`"")
+$draftContent | Out-File -FilePath $OsEnvDraft -Encoding UTF8
+
+Log-Success "os_env_draft.ps1 생성 완료: $OsEnvDraft"
+
+# ==============================================================================
+# 6. 전송 편의를 위한 압축
 # ==============================================================================
 $ZipPath = Join-Path $OutputDir "$($Hostname)_assessment_$Timestamp.zip"
 Compress-Archive -Path $HostOutDir -DestinationPath $ZipPath -Force
@@ -241,5 +285,5 @@ Log-Info " AS-IS 정보 수집 완료: $Hostname"
 Log-Info "  - 출력 디렉토리 : $HostOutDir"
 Log-Info "  - 압축 파일     : $ZipPath"
 Log-Info "=================================================="
-Log-Warn "draft 파일(accounts_gen_draft.ps1, sw_mapping_draft.txt)은 초안입니다."
-Log-Warn "반드시 검토 후 os-setup 쪽 설정 파일(config/os_env/, config/os_param_profiles/ 등)에 반영하세요. 비밀번호는 포함되어 있지 않습니다."
+Log-Warn "os_env_draft.ps1 / sw_mapping_draft.txt 는 초안입니다."
+Log-Warn "반드시 검토 후(특히 HostDirPermissions, HostOsParamProfile 채우기) os-setup 쪽 설정 파일에 반영하세요. 비밀번호는 포함되어 있지 않습니다."

@@ -38,20 +38,22 @@ powershell -ExecutionPolicy Bypass -File .\Collect-AsIs.ps1 [-OutputDir <경로>
 | 파일 | 내용 | 비고 |
 |---|---|---|
 | `accounts_raw_*` | 계정/그룹 원본 전체 | 감사/참고용 |
-| `accounts_gen_draft.env` / `.ps1` | 실사용 계정만 추린 draft (CSV 아님, os-setup의 `HOST_GROUPS`/`HOST_ACCOUNTS` bash 배열 또는 `$HostGroups`/`$HostAccounts` 형식) | **초안 - 검토 필요** |
 | `os_parameters.txt` | sysctl, limits, 네트워크, SELinux/방화벽 등 | 참고용 |
 | `crontabs.txt` / `scheduled_tasks.txt` | 크론탭 / 예약 작업 | 참고용 |
 | `storage.txt` | df, lsblk, blkid, fstab, LVM / Volume, Partition, Disk | 참고용 |
-| `filesystem_gen_draft.env` | Linux 전용, 커스텀 마운트포인트 draft (CSV 아님, `HOST_FILESYSTEMS`/`HOST_DIR_PERMISSIONS` bash 배열 형식) | **초안 - 검토 필요** |
 | `sw_packages_raw.txt` | 설치된 패키지/SW 전체 목록 | 참고용 |
 | `sw_mapping_draft.txt` | JDK/Oracle Client 등 자동 인식 draft (`sw_mapping_linux.txt`/`sw_mapping_window.txt` 형식 - 이 부분은 os-setup에서도 SW 모듈이 원래 방식 그대로라 CSV 성격 그대로 유지됨) | **초안 - 검토 필요** |
+| `os_env_draft.env` / `.ps1` | **계정+스토리지+권한을 하나로 합친 draft** (CSV 아님). `HOST_GROUPS`/`HOST_ACCOUNTS`/`HOST_FILESYSTEMS`/`HOST_DIR_PERMISSIONS` (linux) 또는 `$HostGroups`/`$HostAccounts`/`$HostVolumes`/`$HostDirPermissions` (windows) 배열을 전부 담고 있어, 검토 후 파일명을 `<hostname>.{env,ps1}`로 바꿔서 `config/os_env/`에 두면 그대로 쓸 수 있다 | **초안 - 검토 필요, `HOST_OS_PARAM_PROFILE`은 빈 값이라 직접 채워야 함** |
 
-**"draft" 표시된 파일은 반드시 사람이 검토한 후** `os-setup` 쪽 설정 파일
-(`config/os_env/<hostname>.{env,ps1}`, `config/os_param_profiles/`,
-`config/sw_mapping_*.txt` 등)에 수동으로 반영해야 한다. 자동으로 병합/적용
-되지 않는다. `accounts_gen_draft`/`filesystem_gen_draft`는 os-setup의
-실제 host env 스키마 그대로 생성되므로, 검토 후 해당 내용을 그대로
-`config/os_env/<hostname>.{env,ps1}` 파일에 복사해 넣으면 된다.
+**`os_env_draft.env`/`.ps1`은 반드시 사람이 검토한 후** 파일명을
+`<hostname>.env`/`.ps1`로 바꿔 `os-setup/{linux,windows}/config/os_env/`
+아래 그대로 두면 된다(내용 수정 없이 파일명만 바꿔도 되도록 os-setup이
+그대로 기대하는 배열 형식으로 생성됨 - 실제로 os-setup의
+`account_verify.sh`로 인식되는 것까지 확인함). 단, `HOST_OS_PARAM_PROFILE`
+(windows는 `HostDirPermissions`도 함께)은 AS-IS 값만으로 자동 판단할 수
+없어 빈 값으로 남겨두므로 직접 채워야 한다. `sw_mapping_draft.txt`는
+`config/sw_mapping_*.txt`에 별도로 반영한다(SW 모듈은 원래 방식 그대로
+유지되는 부분이라 자동 병합되지 않음).
 
 ## 계정 정보와 비밀번호
 
@@ -65,8 +67,11 @@ powershell -ExecutionPolicy Bypass -File .\Collect-AsIs.ps1 [-OutputDir <경로>
 
 - **계정**: 로그인 쉘이 "실사용 쉘"(bash/csh/ksh 등)인 계정만 대상으로
   하고, 표준 시스템/서비스 계정(nologin류)과 `root`/내장 계정은 제외한다.
-- **Storage**: LVM 볼륨그룹명은 조회를 시도하지만 실패 시 `appvg`로
-  표시된다. LVM이 아닌 구성은 draft가 정확하지 않을 수 있다.
+- **Storage**: (Linux) LVM 볼륨그룹명은 조회를 시도하지만 실패 시 `appvg`로
+  표시된다. LVM이 아닌 구성은 draft가 정확하지 않을 수 있다. (Windows)
+  시스템 드라이브(보통 C:) 외의 고정 드라이브만 `$HostVolumes`에 담기며,
+  `$HostDirPermissions`(NTFS ACL)는 자동 판단이 어려워 항상 빈 배열로
+  남겨두므로 직접 채워야 한다.
 - **SW**: 이 프로젝트가 이미 자동화 대상으로 다루는 JDK(OpenJDK/Oracle
   JDK)와 Oracle Client만 자동 인식한다. 그 외 일반 패키지(`pkg_` 접두사
   대상)는 `sw_packages_raw.txt` 전체 목록을 보고 사람이 직접 판단해서

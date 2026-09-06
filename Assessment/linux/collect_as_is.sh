@@ -15,10 +15,9 @@
 #   (기본 출력_디렉토리: /tmp/as_is_assessment)
 #   root 권한 없이도 실행은 가능하지만, 다른 계정의 crontab 조회 등
 #   일부 항목은 권한이 있어야 정상적으로 수집된다.
-#
-# 출력물은 os-setup-main 쪽 TO-BE 자동화(계정 생성 Linux_user_gen.txt,
-# SW 매핑 sw_mapping_linux.txt 등)에서 그대로 참고/병합할 수 있도록
-# 최대한 같은 컬럼/구분자 규칙으로 draft 파일을 같이 생성한다.
+## 출력물은 os-setup 쪽 TO-BE 자동화(config/os_env/<hostname>.env,
+# sw_mapping_linux.txt 등)에서 그대로 참고/병합할 수 있도록 최대한 같은
+# 배열/구분자 규칙으로 draft 파일을 같이 생성한다(CSV 미사용).
 # 단, draft는 초안일 뿐이며 반드시 사람이 검토 후 실제 설정 파일에
 # 반영해야 한다(자동 반영 아님).
 # ==============================================================================
@@ -75,22 +74,19 @@ log_info "감지된 OS: ${OS_NAME} ${OS_VERSION} (패키지 계열: ${PKG_FAMILY
 
 # ==============================================================================
 # 1. 계정/그룹 정보 수집
-#   (a) accounts_raw_*.txt   : getent passwd/group 전체 원본 (감사/참고용)
-#   (b) accounts_gen_draft.env : os-setup/linux/config/os_env/<hostname>.env가
-#       그대로 기대하는 HOST_GROUPS/HOST_ACCOUNTS bash 배열 형식으로 생성한
-#       "실제 사용자/서비스 계정으로 추정되는" 계정만 추린 draft (CSV 아님 -
-#       그대로 os_env/<hostname>.env에 복사해 붙여넣을 수 있게 함).
-#       판별 기준: 로그인 쉘이 nologin류가 아닌 "실사용 쉘"인 계정만 포함하고
-#       root는 제외한다 (TO-BE 서버에도 root는 기본 존재하므로).
-#       표준 시스템 계정(bin, daemon, sshd 등)은 보통 쉘이 nologin이라
-#       이 기준으로 자연히 걸러진다.
+#   accounts_raw_*.txt : getent passwd/group 전체 원본 (감사/참고용)
+#   HOST_GROUPS/HOST_ACCOUNTS 배열은 이 단계에서 만들어서 마지막에
+#   os_env_draft.env 하나로 (스토리지/권한 배열과 함께) 합쳐서 출력한다.
+#   판별 기준: 로그인 쉘이 nologin류가 아닌 "실사용 쉘"인 계정만 포함하고
+#   root는 제외한다 (TO-BE 서버에도 root는 기본 존재하므로).
+#   표준 시스템 계정(bin, daemon, sshd 등)은 보통 쉘이 nologin이라
+#   이 기준으로 자연히 걸러진다.
 # ==============================================================================
 log_info "[1/4] 계정/그룹 정보 수집 중..."
 
 getent passwd > "${HOST_OUT_DIR}/accounts_raw_passwd.txt"
 getent group  > "${HOST_OUT_DIR}/accounts_raw_group.txt"
 
-ACCOUNTS_ENV_DRAFT="${HOST_OUT_DIR}/accounts_gen_draft.env"
 REAL_SHELLS_REGEX='^/(usr/)?(bin|sbin)/(bash|sh|csh|ksh|tcsh|zsh|dash)$'
 
 declare -A seen_groups=()
@@ -126,20 +122,7 @@ while IFS=: read -r uname _ uid gid _ home shell; do
     account_lines+=("    \"${uname}:${primary_group}:${uid}:${home}:${shell}:${sec_groups_semicolon}\"")
 done < "${HOST_OUT_DIR}/accounts_raw_passwd.txt"
 
-{
-    echo "# os-setup/linux/config/os_env/${HOSTNAME_SHORT}.env 에 그대로 붙여넣을 draft"
-    echo "# 형식: \"그룹명:GID\""
-    echo "HOST_GROUPS=("
-    if [ "${#group_lines[@]}" -gt 0 ]; then printf '%s\n' "${group_lines[@]}"; fi
-    echo ")"
-    echo
-    echo "# 형식: \"계정명:1차그룹:UID:홈디렉터리:로그인쉘:추가그룹(세미콜론구분,옵션)\""
-    echo "HOST_ACCOUNTS=("
-    if [ "${#account_lines[@]}" -gt 0 ]; then printf '%s\n' "${account_lines[@]}"; fi
-    echo ")"
-} > "$ACCOUNTS_ENV_DRAFT"
-
-log_success "계정/그룹 수집 완료: ${ACCOUNTS_ENV_DRAFT} (참고 원본: accounts_raw_passwd.txt/accounts_raw_group.txt)"
+log_success "계정/그룹 수집 완료 (계정 ${#account_lines[@]}건, 그룹 ${#group_lines[@]}건 - 참고 원본: accounts_raw_passwd.txt/accounts_raw_group.txt)"
 
 # ==============================================================================
 # 2. OS 파라미터 / 크론탭 등 서버 설정 값 수집
@@ -201,16 +184,15 @@ log_success "OS 파라미터/크론탭 수집 완료: ${OS_PARAM_FILE}, ${CRON_F
 
 # ==============================================================================
 # 3. Storage 정보 수집 (볼륨/파티션 구성)
-#   (a) storage.txt : df/lsblk/blkid/fstab/LVM 원본
-#   (b) filesystem_gen_draft.env : os-setup/linux/config/os_env/<hostname>.env가
-#       그대로 기대하는 HOST_FILESYSTEMS(스토리지)/HOST_DIR_PERMISSIONS
-#       (디렉터리 권한) bash 배열 형식으로 생성한 draft (CSV 아님). os-setup은
-#       스토리지 구성과 디렉터리 권한을 별개 모듈로 다루므로 이 둘을
-#       나눠서 출력한다.
-#       기본 OS 마운트(/, /boot, /var, /tmp, /home 등)는 제외하고
-#       "업무용으로 별도 구성된" 마운트포인트만 추출한다.
-#       VG명은 LVM 조회로 추정하며, LVM이 아니거나 추정 실패 시 appvg로
-#       표시하니 반드시 사람이 검토 후 사용할 것.
+#   storage.txt : df/lsblk/blkid/fstab/LVM 원본
+#   HOST_FILESYSTEMS(스토리지)/HOST_DIR_PERMISSIONS(디렉터리 권한) 배열은
+#   이 단계에서 만들어서 마지막에 os_env_draft.env 하나로 (계정 배열과
+#   함께) 합쳐서 출력한다. os-setup은 스토리지 구성과 디렉터리 권한을
+#   별개 모듈로 다루므로 이 둘을 나눠서 만든다.
+#   기본 OS 마운트(/, /boot, /var, /tmp, /home 등)는 제외하고
+#   "업무용으로 별도 구성된" 마운트포인트만 추출한다.
+#   VG명은 LVM 조회로 추정하며, LVM이 아니거나 추정 실패 시 appvg로
+#   표시하니 반드시 사람이 검토 후 사용할 것.
 # ==============================================================================
 log_info "[3/4] Storage 정보 수집 중..."
 
@@ -237,7 +219,6 @@ STORAGE_FILE="${HOST_OUT_DIR}/storage.txt"
     fi
 } > "$STORAGE_FILE" 2>&1
 
-STORAGE_DRAFT="${HOST_OUT_DIR}/filesystem_gen_draft.env"
 DEFAULT_MOUNTS_REGEX='^(/|/boot|/boot/efi|/var|/var/log|/var/log/audit|/var/tmp|/tmp|/home|/usr|/opt)$'
 DEFAULT_VG="appvg"
 
@@ -267,24 +248,7 @@ while read -r mnt; do
     perm_lines+=("    \"${mnt}:${owner}:${group}:${perm}\"")
 done < <(findmnt -rn -o TARGET -t xfs,ext4,ext3,ext2,btrfs 2>/dev/null)
 
-{
-    echo "# os-setup/linux/config/os_env/${HOSTNAME_SHORT}.env 에 그대로 붙여넣을 draft"
-    echo "# 형식: \"마운트포인트:크기(GB):VG명\""
-    echo "HOST_FILESYSTEMS=("
-    if [ "${#fs_lines[@]}" -gt 0 ]; then printf '%s\n' "${fs_lines[@]}"; fi
-    echo ")"
-    echo
-    echo "# 형식: \"경로:소유자:그룹:권한(octal)\""
-    echo "HOST_DIR_PERMISSIONS=("
-    if [ "${#perm_lines[@]}" -gt 0 ]; then printf '%s\n' "${perm_lines[@]}"; fi
-    echo ")"
-    if [ "${#fs_lines[@]}" -eq 0 ]; then
-        echo
-        echo "# 기본 OS 마운트 외 별도 구성된 마운트포인트가 발견되지 않았습니다."
-    fi
-} > "$STORAGE_DRAFT"
-
-log_success "Storage 정보 수집 완료: ${STORAGE_FILE}, ${STORAGE_DRAFT}"
+log_success "Storage 정보 수집 완료 (커스텀 마운트 ${#fs_lines[@]}건 - 원본: ${STORAGE_FILE})"
 
 # ==============================================================================
 # 4. SW 설치 정보 / 버전 수집
@@ -353,7 +317,51 @@ fi
 log_success "SW 정보 수집 완료: ${SW_RAW_FILE}, ${SW_MAPPING_DRAFT}"
 
 # ==============================================================================
-# 5. 전송 편의를 위한 압축
+# 5. 계정/스토리지/권한 draft를 하나의 os_env_draft.env 로 합쳐서 출력
+#   os-setup/linux/config/os_env/<hostname>.env 가 그대로 기대하는
+#   HOST_GROUPS/HOST_ACCOUNTS/HOST_FILESYSTEMS/HOST_DIR_PERMISSIONS 4개
+#   배열을 전부 담은 단일 파일로 만든다 (CSV 아님). 검토 후 파일명을
+#   <hostname>.env 로 바꿔서 config/os_env/ 아래에 그대로 두면 된다.
+#   HOST_OS_PARAM_PROFILE은 AS-IS 값만으로 자동 판단할 수 없어(여러 호스트를
+#   묶어 프로파일명을 정하는 건 사람의 판단 영역) 빈 값으로 남겨둔다.
+# ==============================================================================
+OS_ENV_DRAFT="${HOST_OUT_DIR}/os_env_draft.env"
+{
+    echo "# os-setup/linux/config/os_env/${HOSTNAME_SHORT}.env 후보 - 검토 후"
+    echo "# 이 파일명을 ${HOSTNAME_SHORT}.env 로 바꿔서 config/os_env/ 아래에 두면 된다."
+    echo
+    echo "# 형식: \"그룹명:GID\""
+    echo "HOST_GROUPS=("
+    if [ "${#group_lines[@]}" -gt 0 ]; then printf '%s\n' "${group_lines[@]}"; fi
+    echo ")"
+    echo
+    echo "# 형식: \"계정명:1차그룹:UID:홈디렉터리:로그인쉘:추가그룹(세미콜론구분,옵션)\""
+    echo "HOST_ACCOUNTS=("
+    if [ "${#account_lines[@]}" -gt 0 ]; then printf '%s\n' "${account_lines[@]}"; fi
+    echo ")"
+    echo
+    echo "# 형식: \"마운트포인트:크기(GB):VG명\""
+    echo "HOST_FILESYSTEMS=("
+    if [ "${#fs_lines[@]}" -gt 0 ]; then printf '%s\n' "${fs_lines[@]}"; fi
+    echo ")"
+    if [ "${#fs_lines[@]}" -eq 0 ]; then
+        echo "# (기본 OS 마운트 외 별도 구성된 마운트포인트가 발견되지 않았습니다)"
+    fi
+    echo
+    echo "# 형식: \"경로:소유자:그룹:권한(octal)\""
+    echo "HOST_DIR_PERMISSIONS=("
+    if [ "${#perm_lines[@]}" -gt 0 ]; then printf '%s\n' "${perm_lines[@]}"; fi
+    echo ")"
+    echo
+    echo "# TODO: config/os_param_profiles/ 아래 적절한 프로파일명을 정해서 채우세요"
+    echo "# (AS-IS 값만으로는 자동 판단할 수 없음 - os_parameters.txt 참고)"
+    echo "HOST_OS_PARAM_PROFILE=\"\""
+} > "$OS_ENV_DRAFT"
+
+log_success "os_env_draft.env 생성 완료: ${OS_ENV_DRAFT}"
+
+# ==============================================================================
+# 6. 전송 편의를 위한 압축
 # ==============================================================================
 ARCHIVE_PATH="${OUTPUT_DIR}/${HOSTNAME_SHORT}_assessment_${TIMESTAMP}.tar.gz"
 tar -czf "$ARCHIVE_PATH" -C "$OUTPUT_DIR" "$HOSTNAME_SHORT" 2>/dev/null
@@ -363,5 +371,5 @@ log_info " ★ AS-IS 정보 수집 완료: ${HOSTNAME_SHORT}"
 log_info "  - 출력 디렉토리 : ${HOST_OUT_DIR}"
 log_info "  - 압축 파일     : ${ARCHIVE_PATH}"
 log_info "=================================================="
-log_warn "draft 파일(accounts_gen_draft.env, filesystem_gen_draft.env, sw_mapping_draft.txt)은"
-log_warn "반드시 검토 후 os-setup 쪽 설정 파일(config/os_env/, config/os_param_profiles/ 등)에 반영하세요."
+log_warn "os_env_draft.env / sw_mapping_draft.txt 는 초안입니다."
+log_warn "반드시 검토 후(특히 HOST_OS_PARAM_PROFILE 채우기) os-setup 쪽 설정 파일에 반영하세요."
