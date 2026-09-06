@@ -22,7 +22,7 @@ $Global:OsSetupWindowsConfigDir = $PSScriptRoot
 $Global:OsSetupWindowsDir       = Split-Path $PSScriptRoot -Parent
 $Global:EnvDir                  = Join-Path $OsSetupWindowsConfigDir "os_env"
 $Global:OsParamProfileDir       = Join-Path $OsSetupWindowsConfigDir "os_param_profiles"
-$Global:BackupDir               = "C:\os-setup-backup"   # rollback용 생성 기록(manifest) 저장 위치
+$Global:BackupDir               = Join-Path $OsSetupWindowsDir "tmp"   # rollback용 생성 기록(manifest) 저장 위치
 
 # ※ sw_modules\setup_sw.ps1는 별도로 config\env\<hostname>.ps1 를 본다
 #   (os-setup-main에서 그대로 가져온 것이라 그 경로를 바꾸지 않음). 처음엔

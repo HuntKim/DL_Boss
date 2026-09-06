@@ -34,7 +34,8 @@ os-setup/windows/
 ├── permission/    # Permission-Apply.ps1 / Permission-Rollback.ps1 / Permission-Verify.ps1
 ├── sw_modules/    # (os-setup-main에서 그대로 가져옴, 수정 없음) setup_sw.ps1, install_*.ps1
 ├── monitoring/    # (os-setup-main에서 그대로 가져옴, 수정 없음) setup_monitoring.ps1
-└── logs/          # 실행 로그 자동 생성 위치 - <hostname>.log (git에는 커밋 안 됨)
+├── logs/          # 실행 로그 자동 생성 위치 - <hostname>.log (git에는 커밋 안 됨)
+└── tmp/           # manifest(생성기록)/백업 파일 자동 생성 위치 - <hostname>\ (git에는 커밋 안 됨)
 ```
 
 **`sw_modules`/`monitoring`은 `os-setup-main`에서 그대로 복사해온 것이다**
@@ -98,7 +99,7 @@ ACL을 **추가**한다(기존 Administrators/SYSTEM 등의 권한은 그대로 
 ## manifest 기반 롤백
 
 Linux 쪽과 동일한 원칙 - 모든 `*-Gen.ps1`/`*-Apply.ps1`은 "실제로
-생성/변경한 것"만 `C:\os-setup-backup\<hostname>\`에 기록하고, 롤백은
+생성/변경한 것"만 `tmp\<hostname>\`에 기록하고, 롤백은
 그 기록만 근거로 되돌린다. `$HostGroups`/`$HostAccounts` 등 env 정의를
 직접 순회하며 삭제하는 롤백 스크립트는 없다(Administrators 같은 내장
 그룹을 잘못 건드리는 사고를 막기 위함 - Linux 쪽 개발 중 실제로 겪은

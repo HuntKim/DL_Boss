@@ -30,7 +30,8 @@ os-setup/linux/
 ├── permission/        # 디렉터리 권한: permission_apply.sh / permission_rollback.sh / permission_verify.sh
 ├── sw_modules/        # (os-setup-main에서 그대로 가져옴, 수정 없음) SW 설치: setup_sw.sh, install_*.sh
 ├── monitoring/        # (os-setup-main에서 그대로 가져옴, 수정 없음) 모니터링 에이전트: setup_monitoring.sh
-└── logs/              # 실행 로그 자동 생성 위치 - <hostname>.log (git에는 커밋 안 됨)
+├── logs/              # 실행 로그 자동 생성 위치 - <hostname>.log (git에는 커밋 안 됨)
+└── tmp/               # manifest(생성기록)/백업 파일 자동 생성 위치 - <hostname>/ (git에는 커밋 안 됨)
 ```
 
 **`sw_modules`/`monitoring`은 `os-setup-main`에서 그대로 복사해온 것이다** -
@@ -73,7 +74,7 @@ hostname 기준 설정을 읽어 동작한다. 원래부터 rollback/verify 스�
 `account_rollback.sh`가 env 정의를 그대로 순회하며 지우도록 만들었다가
 **사전에 있던 `sudo`/`wheel` 같은 시스템 그룹까지 삭제해버리는 사고를
 테스트로 발견**했다. 그래서 모든 `_gen.sh`/`_apply.sh`는 "실제로 생성/변경한
-것"만 `/os-setup-backup/<hostname>/`에 기록해두고, `_rollback.sh`는 반드시
+것"만 `tmp/<hostname>/`에 기록해두고, `_rollback.sh`는 반드시
 이 기록만 근거로 되돌린다. env 정의를 직접 순회하며 삭제하는 rollback
 스크립트는 없다.
 
