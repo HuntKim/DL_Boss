@@ -23,7 +23,7 @@ os-setup/windows/
 │   ├── sw_mapping_window.txt # (SW모듈용, os-setup-main에서 그대로 가져옴)
 │   ├── env/
 │   │   └── test.ps1         # (SW모듈용, os-setup-main에서 그대로 가져옴)
-│   ├── host_env/
+│   ├── os_env/
 │   │   ├── example_host.ps1.template
 │   │   └── <hostname>.ps1   # 실제 호스트별 정의
 │   └── os_param_profiles/
@@ -44,7 +44,7 @@ os-setup/windows/
 
 ## 사용법
 
-1. `config/host_env/example_host.ps1.template`을 복사해 `config/host_env/<hostname>.ps1`로
+1. `config/os_env/example_host.ps1.template`을 복사해 `config/os_env/<hostname>.ps1`로
    저장한다(파일명은 `$env:COMPUTERNAME` 값과 일치해야 함).
 2. 신규 VM에서 관리자 권한 PowerShell로 실행:
    ```powershell

@@ -5,7 +5,7 @@ B Cloud 베어메탈 → A Cloud VM 마이그레이션 "단계 2": Assessment(�
 권한을 구성한다.
 
 `os-setup-main`과 별개의 새 구현이다. **CSV를 쓰지 않는다** - 모든 호스트별
-데이터는 `config/host_env/<hostname>.env` 안에 bash 배열로 직접 선언한다.
+데이터는 `config/os_env/<hostname>.env` 안에 bash 배열로 직접 선언한다.
 
 ## 디렉터리 구조
 
@@ -19,7 +19,7 @@ os-setup/linux/
 │   ├── tnsmanes/            # (SW모듈용, os-setup-main에서 그대로 가져옴) tnsnames.ora 예시
 │   ├── env/
 │   │   └── test.env                    # (SW모듈용, os-setup-main에서 그대로 가져옴)
-│   ├── host_env/
+│   ├── os_env/
 │   │   ├── example_host.env.template   # (신규 4모듈용) 호스트별 env 파일 스키마 문서 겸 템플릿
 │   │   └── <hostname>.env              # 실제 호스트별 정의 (호스트마다 1개, 직접 생성)
 │   └── os_param_profiles/
@@ -41,7 +41,7 @@ hostname 기준 설정을 읽어 동작한다. 원래부터 rollback/verify 스�
 없어서(`os-setup-main`에도 없었음) `init.sh verify`/`rollback`에는 포함되지
 않고 `apply`에만 있다.
 
-`config/host_env/<hostname>.env`는 신규 4모듈(계정/OS파라미터/스토리지/권한)
+`config/os_env/<hostname>.env`는 신규 4모듈(계정/OS파라미터/스토리지/권한)
 전용이고, `config/env/<hostname>.env`는 SW 모듈(setup_sw.sh가 읽는 호스트별
 오버라이드) 전용이다 - 처음엔 둘 다 `config/env/`를 써서 같은 파일을
 가리키는 상태였는데, 헷갈린다는 지적을 받아 분리했다. 한 호스트에
@@ -50,7 +50,7 @@ hostname 기준 설정을 읽어 동작한다. 원래부터 rollback/verify 스�
 
 ## 사용법
 
-1. `config/host_env/example_host.env.template`을 복사해 `config/host_env/<hostname>.env`로
+1. `config/os_env/example_host.env.template`을 복사해 `config/os_env/<hostname>.env`로
    저장하고(파일명은 `hostname -s` 결과와 정확히 일치해야 함), Assessment
    결과(`accounts_gen_draft.csv`, `filesystem_gen_draft.txt` 등)를 참고해
    값을 채운다.
@@ -67,7 +67,7 @@ hostname 기준 설정을 읽어 동작한다. 원래부터 rollback/verify 스�
 ## 설계 원칙
 
 ### 1. manifest 기반 롤백 - "우리가 실제로 만든 것"만 되돌린다
-`config/host_env/<hostname>.env`에는 "이미 존재해야 하는 표준 그룹"(예: RHEL의
+`config/os_env/<hostname>.env`에는 "이미 존재해야 하는 표준 그룹"(예: RHEL의
 `wheel`)처럼 우리가 만들지 않은 항목도 섞여 있다. 개발 중 실제로
 `account_rollback.sh`가 env 정의를 그대로 순회하며 지우도록 만들었다가
 **사전에 있던 `sudo`/`wheel` 같은 시스템 그룹까지 삭제해버리는 사고를
