@@ -75,6 +75,20 @@ function Load-HostEnv {
     $Global:HostOsParamProfile  = ""
 
     . $hostEnvFile
+
+    # ※ 중요한 버그 수정: Load-HostEnv는 함수라서, 위 dot-source가 만든
+    #   변수는 이 함수의 "지역" 스코프에만 반영되고 함수가 끝나면
+    #   사라진다. 호스트 env 파일이 "$HostGroups = @(...)" 처럼 스코프
+    #   지정 없이 값을 정의하면(권장 작성 방식), 그 값이 전역(Global)
+    #   스코프로 안 올라가서 Account-Gen.ps1 등에서는 여전히 위에서
+    #   초기화한 빈 배열만 보이는 문제가 실제로 있었다(실기기 테스트로
+    #   발견). 그래서 dot-source 직후 각 값을 명시적으로 Global 스코프로
+    #   다시 밀어넣는다 - 호스트 env 파일이 "$Global:HostGroups = ..."
+    #   식으로 이미 전역에 썼어도(중복이지만) 문제 없이 동작한다.
+    foreach ($varName in @('HostGroups', 'HostAccounts', 'HostVolumes', 'HostDirPermissions', 'HostOsParamProfile')) {
+        Set-Variable -Name $varName -Value (Get-Variable -Name $varName -ValueOnly) -Scope Global
+    }
+
     Log-Info "호스트 전용 env 로드 완료: $($script:HostnameShort).ps1"
 }
 
