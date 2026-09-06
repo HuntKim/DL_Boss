@@ -78,8 +78,13 @@ draft 파일에 채워야 할 값도 OS별로 달라졌다:
   하는 실제 비밀번호를 넣으면 안 됨). 이전에 `windows_user_gen.txt`에
   평문 비밀번호가 커밋되어 있던 문제가 있었는데, 그 문제와 원리상 같은
   노출이 이번엔 의도적인 설계 선택임을 이해하고 다뤄야 한다.
-- **Linux**: 계정 생성(`useradd`)에 비밀번호가 필수는 아니라서 os-setup
-  쪽에 비밀번호 관련 필드 자체가 없다.
+- **Linux**: `os_env_draft.env`에 `HOST_INITIAL_PASSWORD=""` 자리가
+  비어있는 채로 생성된다 - Windows와 동일한 원리로 `account_gen.sh`가
+  새로 만드는 모든 계정에 이 값 하나를 동일하게 적용하고(`chpasswd` +
+  `chage -d 0`으로 "다음 로그인 시 반드시 변경") 설정하므로, 검토 시 이
+  값을 직접 채워야 한다. 마찬가지로 `config/os_env/<hostname>.env`도 git에
+  커밋되는 파일이라 이 값도 git history에 남으니, 담당자가 실제로 즉시
+  변경할 일회성 값만 넣어야 한다.
 
 ## draft 자동 인식의 한계
 

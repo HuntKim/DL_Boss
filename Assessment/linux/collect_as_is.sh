@@ -371,6 +371,12 @@ OS_ENV_DRAFT="${HOST_OUT_DIR}/os_env_draft.env"
     if [ "${#account_lines[@]}" -gt 0 ]; then printf '%s\n' "${account_lines[@]}"; fi
     echo ")"
     echo
+    echo "# TODO: 새로 생성되는 모든 계정에 적용할 초기 비밀번호를 채우세요"
+    echo "# (useradd만으로는 계정이 잠겨서 로그인이 안 됨. account_gen.sh가 이 값으로"
+    echo "#  chpasswd + chage -d 0(다음 로그인 시 변경 강제)을 적용함 - config/os_env/ 는"
+    echo "#  git에 커밋되는 파일이므로 실제로 재사용하는 비밀번호를 넣으면 안 됨)"
+    echo "HOST_INITIAL_PASSWORD=\"\""
+    echo
     echo "# 형식: \"마운트포인트:크기(GB):VG명\""
     echo "HOST_FILESYSTEMS=("
     if [ "${#fs_lines[@]}" -gt 0 ]; then printf '%s\n' "${fs_lines[@]}"; fi
@@ -434,4 +440,4 @@ log_info "  - 출력 디렉토리 : ${HOST_OUT_DIR}"
 log_info "  - 압축 파일     : ${ARCHIVE_PATH}"
 log_info "=================================================="
 log_warn "os_env_draft.env / os_param_profile_draft.param.conf / sw_mapping_draft.txt 는 초안입니다."
-log_warn "반드시 검토 후(배포판 기본값이 섞여 있을 수 있음) os-setup 쪽 설정 파일에 반영하세요."
+log_warn "반드시 검토 후(특히 HOST_INITIAL_PASSWORD 채우기, 배포판 기본값이 섞여 있을 수 있음) os-setup 쪽 설정 파일에 반영하세요."

@@ -70,10 +70,31 @@ if [ "$GROUP_FAIL" -ne 0 ]; then
 fi
 
 # ==============================================================================
-# 2. 계정 생성
+# 2. 계정 생성 (모든 신규 계정에 HOST_INITIAL_PASSWORD 하나를 동일하게 적용)
 #   형식: "계정명:1차그룹:UID:홈디렉터리:로그인쉘:추가그룹(세미콜론,옵션)"
+#   ※ useradd만으로는 계정이 잠긴 상태로 생성되어 비밀번호 로그인이
+#     안 된다. chpasswd로 초기 비밀번호를 설정하고, chage -d 0으로
+#     "다음 로그인 시 반드시 비밀번호 변경"을 강제한다(Windows의
+#     PasswordExpired 설정과 동일한 개념). 담당자가 이 초기 비밀번호로
+#     로그인해 바로 자신의 비밀번호로 바꾸는 것을 전제로 한다.
 # ==============================================================================
+NEEDS_NEW_ACCOUNTS=false
+for entry in "${HOST_ACCOUNTS[@]}"; do
+    IFS=':' read -r uname _ <<< "$entry"
+    [ -z "$uname" ] && continue
+    if ! id "$uname" >/dev/null 2>&1; then
+        NEEDS_NEW_ACCOUNTS=true
+        break
+    fi
+done
+
+if [ "$NEEDS_NEW_ACCOUNTS" = true ] && [ -z "$HOST_INITIAL_PASSWORD" ]; then
+    log_error "HOST_INITIAL_PASSWORD가 정의되어 있지 않습니다 (config/os_env/${HOSTNAME_SHORT}.env 확인)"
+    exit 1
+fi
+
 ACCOUNT_FAIL=0
+created_accounts=()
 for entry in "${HOST_ACCOUNTS[@]}"; do
     IFS=':' read -r uname pgroup uid home shell secgroups <<< "$entry"
     [ -z "$uname" ] && { log_warn "빈 계정 항목을 건너뜁니다: '$entry'"; continue; }
@@ -97,14 +118,27 @@ for entry in "${HOST_ACCOUNTS[@]}"; do
     fi
     useradd_cmd+=("$uname")
 
-    if "${useradd_cmd[@]}"; then
-        log_success "계정 생성 완료: ${uname} (UID: ${uid}, 1차그룹: ${pgroup}, 홈: ${home}, 쉘: ${shell})"
-        manifest_record "created_accounts.txt" "$uname"
-    else
+    if ! "${useradd_cmd[@]}"; then
         log_error "계정 생성 실패: ${uname}"
+        ACCOUNT_FAIL=1
+        continue
+    fi
+    log_success "계정 생성 완료: ${uname} (UID: ${uid}, 1차그룹: ${pgroup}, 홈: ${home}, 쉘: ${shell})"
+    manifest_record "created_accounts.txt" "$uname"
+
+    if echo "${uname}:${HOST_INITIAL_PASSWORD}" | chpasswd; then
+        chage -d 0 "$uname"
+        log_success "초기 비밀번호 설정 완료: ${uname} (다음 로그인 시 변경 필요)"
+        created_accounts+=("$uname")
+    else
+        log_error "초기 비밀번호 설정 실패: ${uname}"
         ACCOUNT_FAIL=1
     fi
 done
+
+if [ "${#created_accounts[@]}" -gt 0 ]; then
+    log_success "생성된 계정: ${created_accounts[*]} (호스트 env에 지정된 초기 비밀번호 적용됨, 다음 로그인 시 변경 필요)"
+fi
 
 if [ "$ACCOUNT_FAIL" -ne 0 ]; then
     log_error "일부 계정 생성에 실패했습니다."
