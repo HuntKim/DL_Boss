@@ -1,11 +1,14 @@
 #!/bin/bash
 # ==============================================================================
 # os-parameter/os_param_apply.sh
-# 호스트 env(HOST_OS_PARAM_PROFILE)가 가리키는 프로파일의 sysctl.conf /
-# limits.conf를 시스템에 적용한다.
+# 호스트 env(HOST_OS_PARAM_PROFILE)가 가리키는 프로파일의 sysctl/limits
+# 값을 시스템에 적용한다.
 #
-# 프로파일은 config/os_param_profiles/<프로파일명>/{sysctl.conf,limits.conf}
-# 로, 네이티브 sysctl/limits 형식 그대로 작성되어 있다(커스텀 파싱 없음).
+# 프로파일은 config/os_param_profiles/<프로파일명>.param.conf 파일 하나에
+# sysctl.conf 줄과 limits.conf 줄을 섞어서 담고 있다(네이티브 형식 그대로,
+# 커스텀 문법 없음). "=" 포함 여부로 자동 분류한다:
+#   - "=" 포함    -> sysctl.conf 형식("key = value")
+#   - "=" 미포함  -> limits.conf 형식("domain type item value", 공백 4컬럼)
 # ==============================================================================
 # 사용법: sudo ./os_param_apply.sh [-y|--yes]
 # ==============================================================================
@@ -23,18 +26,21 @@ load_host_env
 log_info "=== OS 파라미터 적용 시작: ${HOSTNAME_SHORT} ==="
 
 if [ -z "$HOST_OS_PARAM_PROFILE" ]; then
-    log_error "HOST_OS_PARAM_PROFILE이 정의되어 있지 않습니다 (config/env/${HOSTNAME_SHORT}.env 확인)"
+    log_error "HOST_OS_PARAM_PROFILE이 정의되어 있지 않습니다 (config/os_env/${HOSTNAME_SHORT}.env 확인)"
     exit 1
 fi
 
-PROFILE_SRC_DIR="${OS_PARAM_PROFILE_DIR}/${HOST_OS_PARAM_PROFILE}"
-if [ ! -d "$PROFILE_SRC_DIR" ]; then
-    log_error "프로파일 디렉터리가 없습니다: ${PROFILE_SRC_DIR}"
-    log_error "config/os_param_profiles/${HOST_OS_PARAM_PROFILE}/ 을 먼저 만들어야 합니다."
+PROFILE_FILE="${OS_PARAM_PROFILE_DIR}/${HOST_OS_PARAM_PROFILE}.param.conf"
+if [ ! -f "$PROFILE_FILE" ]; then
+    log_error "프로파일 파일이 없습니다: ${PROFILE_FILE}"
+    log_error "config/os_param_profiles/${HOST_OS_PARAM_PROFILE}.param.conf 을 먼저 만들어야 합니다."
     exit 1
 fi
 
-log_info "적용할 프로파일: ${HOST_OS_PARAM_PROFILE} (${PROFILE_SRC_DIR})"
+log_info "적용할 프로파일: ${HOST_OS_PARAM_PROFILE} (${PROFILE_FILE})"
+
+SYSCTL_LINES=$(extract_sysctl_lines "$PROFILE_FILE")
+LIMITS_LINES=$(extract_limits_lines "$PROFILE_FILE")
 
 # 대상 파일이 이미 있으면(예: 이전에 다른 방식으로 수동 설정된 값) rollback을
 # 위해 원본을 백업해둔다. 우리가 이전에 이미 백업해둔 파일이 있으면 다시
@@ -52,12 +58,11 @@ backup_if_needed() {
 }
 
 # ==============================================================================
-# 1. sysctl 프로파일 적용
+# 1. sysctl 값 적용
 # ==============================================================================
-SYSCTL_SRC="${PROFILE_SRC_DIR}/sysctl.conf"
 SYSCTL_DST="/etc/sysctl.d/99-migration-${HOST_OS_PARAM_PROFILE}.conf"
 
-if [ -f "$SYSCTL_SRC" ]; then
+if [ -n "$SYSCTL_LINES" ]; then
     backup_if_needed "$SYSCTL_DST" "backup_sysctl_$(basename "$SYSCTL_DST")"
 
     # 파일(config)만 제거해서는 이미 반영된 "지금 떠있는" 커널 값은
@@ -68,16 +73,16 @@ if [ -f "$SYSCTL_SRC" ]; then
     ORIG_SYSCTL_MANIFEST="original_sysctl_values.txt"
     if [ -z "$(manifest_read "$ORIG_SYSCTL_MANIFEST")" ]; then
         while IFS= read -r line; do
-            case "$line" in \#*|"") continue ;; esac
+            [ -z "$line" ] && continue
             key=$(echo "$line" | cut -d'=' -f1 | xargs)
             [ -z "$key" ] && continue
             orig_value=$(sysctl -n "$key" 2>/dev/null)
             manifest_record "$ORIG_SYSCTL_MANIFEST" "${key}=${orig_value}"
-        done < "$SYSCTL_SRC"
+        done <<< "$SYSCTL_LINES"
         log_info "적용 전 런타임 sysctl 값 기록 완료 (rollback 시 복원용): $(manifest_dir)/${ORIG_SYSCTL_MANIFEST}"
     fi
 
-    cp "$SYSCTL_SRC" "$SYSCTL_DST"
+    echo "$SYSCTL_LINES" > "$SYSCTL_DST"
 
     # sysctl --system은 /etc/sysctl.d/ 전체 파일을 다시 적용한다. 이
     # 프로파일과 무관한 다른(기존) 파일이 실패해도 전체 명령의 종료
@@ -89,9 +94,7 @@ if [ -f "$SYSCTL_SRC" ]; then
 
     apply_fail=0
     while IFS= read -r line; do
-        case "$line" in
-            \#*|"") continue ;;
-        esac
+        [ -z "$line" ] && continue
         key=$(echo "$line" | cut -d'=' -f1 | xargs)
         expected=$(echo "$line" | cut -d'=' -f2- | xargs)
         [ -z "$key" ] && continue
@@ -103,7 +106,7 @@ if [ -f "$SYSCTL_SRC" ]; then
             log_error "sysctl 적용 실패: ${key} (기대: '${expected}', 실제: '${actual}')"
             apply_fail=1
         fi
-    done < "$SYSCTL_SRC"
+    done <<< "$SYSCTL_LINES"
 
     if [ "$apply_fail" -ne 0 ]; then
         log_error "이 프로파일의 sysctl 값 중 일부가 적용되지 않았습니다. /tmp/sysctl_apply.log 확인 필요."
@@ -113,22 +116,21 @@ if [ -f "$SYSCTL_SRC" ]; then
     log_success "sysctl 프로파일 적용 완료: ${SYSCTL_DST}"
     manifest_record "created_os_param_files.txt" "$SYSCTL_DST"
 else
-    log_warn "프로파일에 sysctl.conf가 없습니다. 건너뜁니다: ${SYSCTL_SRC}"
+    log_warn "프로파일에 sysctl 항목('=' 포함 줄)이 없습니다. 건너뜁니다."
 fi
 
 # ==============================================================================
-# 2. limits 프로파일 적용
+# 2. limits 값 적용
 # ==============================================================================
-LIMITS_SRC="${PROFILE_SRC_DIR}/limits.conf"
 LIMITS_DST="/etc/security/limits.d/99-migration-${HOST_OS_PARAM_PROFILE}.conf"
 
-if [ -f "$LIMITS_SRC" ]; then
+if [ -n "$LIMITS_LINES" ]; then
     backup_if_needed "$LIMITS_DST" "backup_limits_$(basename "$LIMITS_DST")"
-    cp "$LIMITS_SRC" "$LIMITS_DST"
+    echo "$LIMITS_LINES" > "$LIMITS_DST"
     log_success "limits 프로파일 적용 완료: ${LIMITS_DST} (다음 로그인부터 적용됨)"
     manifest_record "created_os_param_files.txt" "$LIMITS_DST"
 else
-    log_warn "프로파일에 limits.conf가 없습니다. 건너뜁니다: ${LIMITS_SRC}"
+    log_warn "프로파일에 limits 항목('=' 미포함 줄)이 없습니다. 건너뜁니다."
 fi
 
 log_success "=== OS 파라미터 적용 완료: ${HOSTNAME_SHORT} (프로파일: ${HOST_OS_PARAM_PROFILE}) ==="

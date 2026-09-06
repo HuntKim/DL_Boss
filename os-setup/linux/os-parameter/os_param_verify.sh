@@ -20,7 +20,7 @@ if [ -z "$HOST_OS_PARAM_PROFILE" ]; then
     exit 1
 fi
 
-PROFILE_SRC_DIR="${OS_PARAM_PROFILE_DIR}/${HOST_OS_PARAM_PROFILE}"
+PROFILE_FILE="${OS_PARAM_PROFILE_DIR}/${HOST_OS_PARAM_PROFILE}.param.conf"
 PASS_COUNT=0
 FAIL_COUNT=0
 
@@ -36,17 +36,20 @@ check() {
     fi
 }
 
+if [ ! -f "$PROFILE_FILE" ]; then
+    log_error "프로파일 파일이 없습니다: ${PROFILE_FILE}"
+    exit 1
+fi
+
+SYSCTL_LINES=$(extract_sysctl_lines "$PROFILE_FILE")
+LIMITS_LINES=$(extract_limits_lines "$PROFILE_FILE")
+
 # ==============================================================================
-# 1. sysctl 값 검증 (프로파일 파일의 "key = value" 줄을 그대로 읽어
-#   실제 커널 값(sysctl -n key)과 비교한다)
+# 1. sysctl 값 검증 (프로파일의 "key = value" 줄을 실제 커널 값과 비교)
 # ==============================================================================
-SYSCTL_SRC="${PROFILE_SRC_DIR}/sysctl.conf"
-if [ -f "$SYSCTL_SRC" ]; then
+if [ -n "$SYSCTL_LINES" ]; then
     while IFS= read -r line; do
-        # 주석/빈 줄 제외
-        case "$line" in
-            \#*|"") continue ;;
-        esac
+        [ -z "$line" ] && continue
         key=$(echo "$line" | cut -d'=' -f1 | xargs)
         expected=$(echo "$line" | cut -d'=' -f2- | xargs)
         [ -z "$key" ] && continue
@@ -57,26 +60,25 @@ if [ -f "$SYSCTL_SRC" ]; then
         else
             check "sysctl ${key} (기대: '${expected}', 실제: '${actual}')" "false"
         fi
-    done < "$SYSCTL_SRC"
+    done <<< "$SYSCTL_LINES"
 else
-    log_warn "프로파일에 sysctl.conf가 없어 sysctl 검증을 건너뜁니다."
+    log_warn "프로파일에 sysctl 항목이 없어 sysctl 검증을 건너뜁니다."
 fi
 
 # ==============================================================================
-# 2. limits.d 파일 검증 (프로파일 파일과 시스템에 적용된 파일이 동일한지)
+# 2. limits.d 파일 검증 (프로파일의 limits 항목과 시스템에 적용된 파일이 동일한지)
 # ==============================================================================
-LIMITS_SRC="${PROFILE_SRC_DIR}/limits.conf"
 LIMITS_DST="/etc/security/limits.d/99-migration-${HOST_OS_PARAM_PROFILE}.conf"
-if [ -f "$LIMITS_SRC" ]; then
+if [ -n "$LIMITS_LINES" ]; then
     if [ ! -f "$LIMITS_DST" ]; then
         check "limits.d 파일 존재 (${LIMITS_DST})" "false"
-    elif diff -q "$LIMITS_SRC" "$LIMITS_DST" >/dev/null 2>&1; then
+    elif diff -q <(echo "$LIMITS_LINES") "$LIMITS_DST" >/dev/null 2>&1; then
         check "limits.d 파일 내용이 프로파일과 일치 (${LIMITS_DST})" "true"
     else
         check "limits.d 파일 내용이 프로파일과 일치 (${LIMITS_DST}, 내용 다름)" "false"
     fi
 else
-    log_warn "프로파일에 limits.conf가 없어 limits 검증을 건너뜁니다."
+    log_warn "프로파일에 limits 항목이 없어 limits 검증을 건너뜁니다."
 fi
 
 log_info "=================================================="

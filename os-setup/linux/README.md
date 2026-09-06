@@ -23,7 +23,7 @@ os-setup/linux/
 │   │   ├── example_host.env.template   # (신규 4모듈용) 호스트별 env 파일 스키마 문서 겸 템플릿
 │   │   └── <hostname>.env              # 실제 호스트별 정의 (호스트마다 1개, 직접 생성)
 │   └── os_param_profiles/
-│       └── <프로파일명>/{sysctl.conf,limits.conf}   # 네이티브 형식 그대로
+│       └── <프로파일명>.param.conf   # sysctl+limits 값을 한 파일에 (네이티브 형식, "=" 유무로 자동 분류)
 ├── account/           # 계정/그룹: account_gen.sh / account_rollback.sh / account_verify.sh
 ├── os-parameter/      # OS 파라미터: os_param_apply.sh / os_param_rollback.sh / os_param_verify.sh
 ├── storage/           # 스토리지(LVM): storage_gen.sh / storage_rollback.sh / storage_verify.sh
@@ -76,19 +76,23 @@ hostname 기준 설정을 읽어 동작한다. 원래부터 rollback/verify 스�
 이 기록만 근거로 되돌린다. env 정의를 직접 순회하며 삭제하는 rollback
 스크립트는 없다.
 
-### 2. OS 파라미터는 네이티브 형식 그대로
+### 2. OS 파라미터는 네이티브 형식 그대로, 파일 하나로 합쳐서
 sysctl/limits 값은 커스텀 포맷으로 재발명하지 않고 실제 `sysctl.conf`/
-`limits.conf` 형식 그대로 프로파일 파일에 작성한다. 파싱 로직이 따로
-필요 없고, 사람이 봐도 바로 이해된다.
+`limits.conf` 문법 그대로 쓰되, 두 형식을 별도 파일로 나누지 않고
+`config/os_param_profiles/<프로파일명>.param.conf` 한 파일에 섞어서
+작성한다. 각 줄에 `"="`이 있으면 sysctl 값("key = value"), 없으면
+limits 값("domain type item value", 공백 4컬럼)으로 자동 분류된다(두
+형식 문법이 원래 겹치지 않아 별도 섹션 마커 없이 이 판별만으로 충분함).
+파일을 여러 개 찾아다닐 필요 없이 한 파일만 열어서 수정하면 된다.
 
 **프로파일명은 "도메인"이 아니라 "실제 값이 같은 단위"로 짓는다.** 같은
 도메인(예: EES-PHOTO)이라도 WEB/WAS/DB처럼 역할이 다르거나 도메인 안에
 여러 시스템이 있으면 값이 서로 다를 수 있다 - 이 경우 도메인명 하나로
-퉁치면 안 되고 `EES-PHOTO-WEB`, `EES-PHOTO-WAS`, `EES-PHOTO-SYS1-DB`처럼
-값이 실제로 같은 서버들끼리만 같은 프로파일명을 쓰도록 더 잘게 나눠야
-한다. 정말 그 서버 하나만 특이하면 프로파일명을 그 호스트명으로 지으면
-"서버 1대당 설정 파일 1개"가 그대로 재현된다(이전 방식과 동일). 값이
-진짜 동일한 서버가 여러 대일 때만 프로파일을 공유해서 중복을 줄이면
+퉁치면 안 되고 `EES-PHOTO-WEB.param.conf`, `EES-PHOTO-SYS1-DB.param.conf`
+처럼 값이 실제로 같은 서버들끼리만 같은 프로파일명을 쓰도록 더 잘게
+나눠야 한다. 정말 그 서버 하나만 특이하면 프로파일명을 그 호스트명으로
+지으면 "서버 1대당 설정 파일 1개"가 그대로 재현된다(이전 방식과 동일).
+값이 진짜 동일한 서버가 여러 대일 때만 프로파일을 공유해서 중복을 줄이면
 된다 - 프로파일명을 얼마나 잘게 쪼갤지는 순전히 운영 판단의 영역이고
 스크립트는 그 이름을 그대로 조회할 뿐이다.
 
