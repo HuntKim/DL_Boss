@@ -54,6 +54,19 @@ os-setup/windows/
    powershell -ExecutionPolicy Bypass -File .\init.ps1 -Mode verify
    powershell -ExecutionPolicy Bypass -File .\init.ps1 -Mode rollback
    ```
+   개별 스크립트를 직접 실행할 때도(`./Account-Gen.ps1` 등) 동일하게
+   `-ExecutionPolicy Bypass -File`을 붙여야 한다 - 실행 정책이 `AllSigned`/
+   `Restricted`인 세션에서 서명되지 않은 로컬 스크립트를 직접 실행하면
+   `PSSecurityException`으로 막힌다. 세션 단위로 한 번만 풀고 싶으면
+   `Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass -Force`를
+   먼저 실행해도 된다(그 창을 닫을 때까지만 적용, 시스템 전체 설정은
+   안 바뀜).
+
+   모든 `.ps1` 파일은 UTF-8 BOM을 포함해 저장되어 있다(한글 로그 메시지가
+   Windows PowerShell 5.1에서 시스템 코드페이지로 잘못 읽혀 깨지는 문제
+   방지 - BOM이 없으면 UTF-8로 인식되지 않고 CP949 등으로 오인식될 수
+   있음). 만약 다른 도구로 이 파일들을 다시 저장한다면 UTF-8(BOM 포함)
+   인코딩을 유지해야 한다.
 
 ## 계정 비밀번호는 절대 저장하지 않는다
 
