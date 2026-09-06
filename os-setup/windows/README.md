@@ -16,19 +16,30 @@ OS 파라미터/스토리지 모듈은 아예 없었다. 이 폴더의 os-parame
 
 ```
 os-setup/windows/
-├── init.ps1                 # 4개 모듈을 순서대로 실행하는 오케스트레이터
+├── init.ps1                 # 6개 모듈을 순서대로 실행하는 오케스트레이터
 ├── config/
-│   ├── common.ps1           # 공통 로그 함수 + env 로더 + manifest 헬퍼
+│   ├── common.ps1           # (신규 4모듈용) 공통 로그 함수 + env 로더 + manifest 헬퍼
+│   ├── windows_common.ps1   # (SW모듈용, os-setup-main에서 그대로 가져옴)
+│   ├── sw_mapping_window.txt # (SW모듈용, os-setup-main에서 그대로 가져옴)
 │   ├── env/
 │   │   ├── example_host.ps1.template
+│   │   ├── test.ps1         # (SW모듈용, os-setup-main에서 그대로 가져옴)
 │   │   └── <hostname>.ps1   # 실제 호스트별 정의
 │   └── os_param_profiles/
 │       └── <프로파일명>/registry.reg   # 네이티브 .reg 형식
 ├── account/       # Account-Gen.ps1 / Account-Rollback.ps1 / Account-Verify.ps1
 ├── os-parameter/  # OsParam-Apply.ps1 / OsParam-Rollback.ps1 / OsParam-Verify.ps1
 ├── storage/       # Storage-Gen.ps1 / Storage-Rollback.ps1 / Storage-Verify.ps1
-└── permission/    # Permission-Apply.ps1 / Permission-Rollback.ps1 / Permission-Verify.ps1
+├── permission/    # Permission-Apply.ps1 / Permission-Rollback.ps1 / Permission-Verify.ps1
+├── sw_modules/    # (os-setup-main에서 그대로 가져옴, 수정 없음) setup_sw.ps1, install_*.ps1
+└── monitoring/    # (os-setup-main에서 그대로 가져옴, 수정 없음) setup_monitoring.ps1
 ```
+
+**`sw_modules`/`monitoring`은 `os-setup-main`에서 그대로 복사해온 것이다**
+(diff로 완전 동일 확인, 다운로드 URL/옵션 등 무수정). `init.ps1 -Mode apply`
+실행 시 4단계가 전부 성공해야 5단계(SW 설치)·6단계(모니터링)로 이어지며,
+이 둘은 인자 없이 `$env:COMPUTERNAME` 기준으로 동작한다. rollback/verify
+스크립트가 원래 없어(`os-setup-main`에도 없었음) apply에만 포함된다.
 
 ## 사용법
 

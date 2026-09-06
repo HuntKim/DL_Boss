@@ -11,19 +11,39 @@ B Cloud 베어메탈 → A Cloud VM 마이그레이션 "단계 2": Assessment(�
 
 ```
 os-setup/linux/
-├── init.sh                  # 4개 모듈을 순서대로 실행하는 오케스트레이터
+├── init.sh                  # 6개 모듈을 순서대로 실행하는 오케스트레이터
 ├── config/
-│   ├── common.env           # 공통 로그 함수 + env 로더 + manifest(생성기록) 헬퍼
+│   ├── common.env           # (신규 4모듈용) 공통 로그 함수 + env 로더 + manifest 헬퍼
+│   ├── linux_common.env     # (SW모듈용, os-setup-main에서 그대로 가져옴) 로그 함수 등
+│   ├── sw_mapping_linux.txt # (SW모듈용, os-setup-main에서 그대로 가져옴) 호스트별 SW 매핑
+│   ├── tnsmanes/            # (SW모듈용, os-setup-main에서 그대로 가져옴) tnsnames.ora 예시
 │   ├── env/
-│   │   ├── example_host.env.template   # 호스트별 env 파일 스키마 문서 겸 템플릿
+│   │   ├── example_host.env.template   # (신규 4모듈용) 호스트별 env 파일 스키마 문서 겸 템플릿
+│   │   ├── test.env                    # (SW모듈용, os-setup-main에서 그대로 가져옴)
 │   │   └── <hostname>.env              # 실제 호스트별 정의 (호스트마다 1개, 직접 생성)
 │   └── os_param_profiles/
 │       └── <프로파일명>/{sysctl.conf,limits.conf}   # 네이티브 형식 그대로
 ├── account/           # 계정/그룹: account_gen.sh / account_rollback.sh / account_verify.sh
 ├── os-parameter/      # OS 파라미터: os_param_apply.sh / os_param_rollback.sh / os_param_verify.sh
 ├── storage/           # 스토리지(LVM): storage_gen.sh / storage_rollback.sh / storage_verify.sh
-└── permission/        # 디렉터리 권한: permission_apply.sh / permission_rollback.sh / permission_verify.sh
+├── permission/        # 디렉터리 권한: permission_apply.sh / permission_rollback.sh / permission_verify.sh
+├── sw_modules/        # (os-setup-main에서 그대로 가져옴, 수정 없음) SW 설치: setup_sw.sh, install_*.sh
+└── monitoring/        # (os-setup-main에서 그대로 가져옴, 수정 없음) 모니터링 에이전트: setup_monitoring.sh
 ```
+
+**`sw_modules`/`monitoring`은 `os-setup-main`에서 그대로 복사해온 것이다** -
+다운로드 URL, curl 옵션(`-k` 등), 내부 설치 로직을 전혀 수정하지 않았다
+(바이트 단위로 동일함을 diff로 확인). `init.sh apply` 실행 시 계정→OS
+파라미터→스토리지→권한 4단계가 전부 성공해야 5단계(SW 설치)·6단계
+(모니터링)로 이어지며, 이 둘은 인자를 받지 않고(`-y` 옵션 없음) 자체적으로
+hostname 기준 설정을 읽어 동작한다. 원래부터 rollback/verify 스크립트가
+없어서(`os-setup-main`에도 없었음) `init.sh verify`/`rollback`에는 포함되지
+않고 `apply`에만 있다.
+
+`config/env/<hostname>.env` 파일 하나가 신규 4모듈(계정/OS파라미터/스토리지/
+권한)과 SW 모듈(setup_sw.sh가 읽는 호스트별 오버라이드) 양쪽에 다 쓰인다 -
+변수명이 서로 겹치지 않아(`HOST_*` vs `TARGET_*`/SW 전용 변수) 한 파일에
+같이 선언해도 충돌 없다.
 
 ## 사용법
 

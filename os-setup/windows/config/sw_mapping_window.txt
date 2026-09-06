@@ -1,0 +1,84 @@
+# =====================================================================  
+# [Windows SW 매핑 설정 파일 규칙]  
+# =====================================================================  
+# 1. 형식: 호스트명:SW종류_버전,SW종류_버전,... (콜론(:)과 콤마(,) 구분 준수)  
+# 2. 호스트명: 윈도우 컴퓨터 이름과 일치해야 함
+# =====================================================================  
+# Sample
+KORCO196900:iis,telnet,ftp,oracle_jdk_1.7.0_80_64b,python_3.12.0_64b,Net_Framework_3.5_64b,Net_Framework_4.8_64b,visual_studio_code_1.133.0_64b,oracle_client_19.3.0.0,ssms_22
+#============================
+RTPOADSA01M:Net_Framework_4.8_64b,oracle_jdk_1.7.0_80_64b,python_3.12.0_64b,visual_studio_code_1.108.1_64b,oracle_client_19.3.0.0
+DVPKSMCSW01M:Net_Framework_4.8_64b,IIS_10.0,ftp,openjdk_1.8.0_482_64b
+DVPKSMCSD01M:ssms_22
+RTPCADSA01M:Net_Framework_4.8_64b,oracle_jdk_1.7.0_80_64b,python_3.12.0_64b,visual_studio_code_1.108.1_64b,oracle_client_19.3.0.0
+DVPGFPA01M:Net_Framework_4.8_64b,IIS_10.0,ftp,oracle_client_19.3.0.0
+RTPGGCSW01M:Net_Framework_4.8_64b,IIS_10.0,ftp,oracle_jdk_1.8.0_271_64b,oracle_client_19.3.0.0
+RTPGGCSW02M:Net_Framework_4.8_64b,IIS_10.0,ftp,oracle_jdk_1.8.0_271_64b,oracle_client_19.3.0.0
+RTPGGCSIOA01M:Net_Framework_4.8_64b,IIS_10.0,ftp,oracle_jdk_1.8.0_271_64b,oracle_client_19.3.0.0
+RTPGGCSIOA02M:Net_Framework_4.8_64b,IIS_10.0,ftp,oracle_jdk_1.8.0_271_64b,oracle_client_19.3.0.0
+RTPP66MA01M:Net_Framework_4.8_64b,oracle_client_19.3.0.0
+RTPP66MA02M:Net_Framework_4.8_64b,oracle_client_19.3.0.0
+RTPPHVACA01M:Net_Framework_4.8_64b,oracle_client_19.3.0.0
+RTPPHVACA02M:Net_Framework_4.8_64b,oracle_client_19.3.0.0
+RTPPFMCSIFA01M:Net_Framework_4.8_64b,oracle_client_19.3.0.0
+RTPP154MA01M:Net_Framework_4.8_64b,oracle_client_19.3.0.0
+RTPP154MA02M:Net_Framework_4.8_64b,oracle_client_19.3.0.0
+RTPPUPWA01M:Net_Framework_4.8_64b,oracle_client_19.3.0.0
+RTPPUPWA02M:Net_Framework_4.8_64b,oracle_client_19.3.0.0
+RTPPWWTA01M:Net_Framework_4.8_64b,oracle_client_19.3.0.0
+RTPPWWTA02M:Net_Framework_4.8_64b,oracle_client_19.3.0.0
+RTPPFMCSIFA02M:Net_Framework_4.8_64b,oracle_client_19.3.0.0
+PPNMSA01M:Net_Framework_4.8_64b,IIS_10.0,ftp,telnet
+DRPPNMSA01M:Net_Framework_4.8_64b,IIS_10.0,ftp,telnet
+PPNMSD01M:Net_Framework_4.8_64b,ssms_22
+DRPPNMSD01M:Net_Framework_4.8_64b,ssms_22
+PPNMSCA01M:Net_Framework_4.8_64b
+PPNMSCA02M:Net_Framework_4.8_64b
+PPNMSCA03M:Net_Framework_4.8_64b
+PPNMSCA04M:Net_Framework_4.8_64b
+PPNMSCA05M:Net_Framework_4.8_64b
+PPNMSCA06M:Net_Framework_4.8_64b
+PPNMSCA07M:Net_Framework_4.8_64b
+PPNMSCA08M:Net_Framework_4.8_64b
+PPNMSCA09M:Net_Framework_4.8_64b
+PPNMSCA10M:Net_Framework_4.8_64b
+PPNMSCA11M:Net_Framework_4.8_64b
+PPNMSCA12M:Net_Framework_4.8_64b
+PPNMSCA13M:Net_Framework_4.8_64b
+PPNMSCA14M:Net_Framework_4.8_64b
+PPNMSCA15M:Net_Framework_4.8_64b
+PPNMSCA16M:Net_Framework_4.8_64b
+PP2NMSCA01M:Net_Framework_4.8_64b
+PP2NMSCA02M:Net_Framework_4.8_64b
+PP2NMSCA03M:Net_Framework_4.8_64b
+PP2NMSCA04M:Net_Framework_4.8_64b
+PP2NMSCA05M:Net_Framework_4.8_64b
+PP2NMSCA06M:Net_Framework_4.8_64b
+PP2NMSCA07M:Net_Framework_4.8_64b
+PPNMSCA17M:Net_Framework_4.8_64b
+PP2NMSCA08M:Net_Framework_4.8_64b
+PPNMSCA18M:Net_Framework_4.8_64b
+PPEDAV2A01M:Net_Framework_4.8_64b,IIS_10.0,ftp,oracle_client_19.3.0.0
+PPEDAV2A02M:Net_Framework_4.8_64b,IIS_10.0,ftp,oracle_client_19.3.0.0
+PPEDAPWPA01M:Net_Framework_4.8_64b,IIS_10.0,ftp,oracle_client_19.3.0.0
+PPEDAPWPA02M:Net_Framework_4.8_64b,IIS_10.0,ftp,oracle_client_19.3.0.0
+PPEDAS5BEA01M:Net_Framework_4.8_64b,IIS_10.0,ftp,oracle_client_19.3.0.0
+PPEDAS5BEA02M:Net_Framework_4.8_64b,IIS_10.0,ftp,oracle_client_19.3.0.0
+PPEDAP3ANA01M:Net_Framework_4.8_64b,IIS_10.0,ftp,oracle_client_19.3.0.0
+PPEDAP3ANA02M:Net_Framework_4.8_64b,IIS_10.0,ftp,oracle_client_19.3.0.0
+PPEDAP3CNA01M:Net_Framework_4.8_64b,IIS_10.0,ftp,oracle_client_19.3.0.0
+PPEDAP3CNA02M:Net_Framework_4.8_64b,IIS_10.0,ftp,oracle_client_19.3.0.0
+PPEDAP4CNA01M:Net_Framework_4.8_64b,IIS_10.0,ftp,oracle_client_19.3.0.0
+PPEDAP4CNA02M:Net_Framework_4.8_64b,IIS_10.0,ftp,oracle_client_19.3.0.0
+POFITSA01M:Net_Framework_4.8_64b,IIS_10.0,ftp,oracle_jdk_1.8.0_045_64b,oracle_client_19.3.0.0
+DVPGIWPA01M:Net_Framework_3.5_64b,Net_Framework_4.8_64b,IIS_10.0,ftp,oracle_jdk_1.7.0_80_64b,oracle_client_19.3.0.0
+RTPGIWPA01M:Net_Framework_3.5_64b,Net_Framework_4.8_64b,IIS_10.0,ftp,oracle_jdk_1.7.0_80_64b,oracle_client_19.3.0.0
+RTPGIWPA02M:Net_Framework_3.5_64b,Net_Framework_4.8_64b,IIS_10.0,ftp,oracle_jdk_1.7.0_80_64b,oracle_client_19.3.0.0
+RTPGEDAA01M:Net_Framework_4.8_64b,IIS_10.0,ftp,oracle_client_19.3.0.0
+RTPGEDAA02M:Net_Framework_4.8_64b,IIS_10.0,ftp,oracle_client_19.3.0.0
+DVPHSMCSW01M:Net_Framework_4.8_64b,IIS_10.0,ftp,openjdk_1.8.0_482_64b
+DVPHSMCSD01M:ssms_22
+DVPPSMCSW01M:Net_Framework_4.8_64b,IIS_10.0,ftp,openjdk_1.8.0_482_64b
+DVPPSMCSD01M:ssms_22
+DVPCSMCSW01M:Net_Framework_4.8_64b,IIS_10.0,ftp,openjdk_1.8.0_482_64b
+DVPCSMCSD01M:ssms_22
