@@ -245,7 +245,8 @@ $OsEnvDraft = Join-Path $HostOutDir "os_env_draft.ps1"
 $draftContent = New-Object System.Collections.Generic.List[string]
 $draftContent.Add("# os-setup/windows/config/os_env/$Hostname.ps1 후보 - 검토 후")
 $draftContent.Add("# 이 파일명을 $Hostname.ps1 로 바꿔서 config/os_env/ 아래에 두면 된다.")
-$draftContent.Add("# 비밀번호는 포함하지 않음 - Account-Gen.ps1이 임시 비밀번호를 자동 생성함")
+$draftContent.Add("# 비밀번호는 채워져 있지 않음 - 새로 생성되는 모든 계정에 공통 적용할")
+$draftContent.Add("# 초기 비밀번호를 아래 HostInitialPassword에 직접 입력해야 함")
 $draftContent.Add("")
 $draftContent.Add("`$HostGroups = @(")
 $draftContent.AddRange($groupLines)
@@ -254,6 +255,12 @@ $draftContent.Add("")
 $draftContent.Add("`$HostAccounts = @(")
 $draftContent.AddRange($accountLines)
 $draftContent.Add(")")
+$draftContent.Add("")
+$draftContent.Add("# TODO: 새로 생성되는 모든 계정에 적용할 초기 비밀번호를 채우세요")
+$draftContent.Add("# (Windows 계정 정책의 복잡도 요건을 만족해야 함, 다음 로그온 시 담당자가")
+$draftContent.Add("#  즉시 변경하는 일회성 값 - config/os_env/ 는 git에 커밋되는 파일이므로")
+$draftContent.Add("#  실제로 재사용하는 비밀번호를 넣으면 안 됨)")
+$draftContent.Add("`$HostInitialPassword = `"`"")
 $draftContent.Add("")
 $draftContent.Add("`$HostVolumes = @(")
 $draftContent.AddRange($volumeLines)
@@ -286,4 +293,4 @@ Log-Info "  - 출력 디렉토리 : $HostOutDir"
 Log-Info "  - 압축 파일     : $ZipPath"
 Log-Info "=================================================="
 Log-Warn "os_env_draft.ps1 / sw_mapping_draft.txt 는 초안입니다."
-Log-Warn "반드시 검토 후(특히 HostDirPermissions, HostOsParamProfile 채우기) os-setup 쪽 설정 파일에 반영하세요. 비밀번호는 포함되어 있지 않습니다."
+Log-Warn "반드시 검토 후(특히 HostInitialPassword, HostDirPermissions, HostOsParamProfile 채우기) os-setup 쪽 설정 파일에 반영하세요."

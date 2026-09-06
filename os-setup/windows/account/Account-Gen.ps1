@@ -2,10 +2,14 @@
 # account/Account-Gen.ps1
 # 호스트 env($HostGroups, $HostAccounts)를 기준으로 그룹 -> 계정 순으로 생성.
 #
-# ※ 비밀번호는 절대 config에 넣지 않는다. 계정 생성 시 임의의 임시
-#   비밀번호를 생성해 이번 실행의 콘솔 출력에만 1회 표시하고, 어디에도
-#   저장하지 않는다. 계정은 "다음 로그온 시 암호 변경 필수"로 설정되므로
-#   실제 사용자가 최초 로그온 시 자신의 비밀번호로 바꾸게 된다.
+# ※ 새로 만드는 모든 계정에 동일한 초기 비밀번호($HostInitialPassword,
+#   호스트 env 파일에 평문으로 지정)를 적용한다. 계정마다 다른 임의
+#   비밀번호를 만들어 한 번만 보여주고 어디에도 저장하지 않던 이전
+#   방식은 계정이 여러 개일 때 담당자가 비밀번호를 하나하나 따로
+#   전달/관리해야 해서 번거롭다는 피드백에 따라 단순화함 - 담당자가
+#   이 초기 비밀번호로 로그온해 바로 자신의 비밀번호로 바꾸는 것을
+#   전제로 하므로, 재사용되는 값이 아니다. 계정은 "다음 로그온 시 암호
+#   변경 필수"로 설정된다.
 # ==============================================================================
 # 사용법: powershell -ExecutionPolicy Bypass -File .\Account-Gen.ps1 [-Yes]
 # ==============================================================================
@@ -49,16 +53,23 @@ foreach ($gname in $HostGroups) {
 }
 
 # ==============================================================================
-# 2. 계정 생성
+# 2. 계정 생성 (모든 신규 계정에 $HostInitialPassword 하나를 동일하게 적용)
 # ==============================================================================
-function New-RandomPassword {
-    # 대문자/소문자/숫자/특수문자를 섞은 16자리 임의 비밀번호
-    $chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789!@#$%^&*'
-    -join (1..16 | ForEach-Object { $chars[(Get-Random -Maximum $chars.Length)] })
+$accountsToCreate = @($HostAccounts | Where-Object { -not (Get-LocalUser -Name $_.User -ErrorAction SilentlyContinue) })
+
+if ($accountsToCreate.Count -gt 0 -and [string]::IsNullOrEmpty($HostInitialPassword)) {
+    Log-Error "HostInitialPassword가 정의되어 있지 않습니다 (config/os_env/$($script:HostnameShort).ps1 확인)"
+    exit 1
 }
 
-$createdSummary = New-Object System.Collections.Generic.List[PSCustomObject]
+$SecureInitialPassword = if ($accountsToCreate.Count -gt 0) {
+    ConvertTo-SecureString $HostInitialPassword -AsPlainText -Force
+} else {
+    $null
+}
+
 $fail = $false
+$createdUsers = New-Object System.Collections.Generic.List[string]
 
 foreach ($acct in $HostAccounts) {
     $uname = $acct.User
@@ -68,11 +79,8 @@ foreach ($acct in $HostAccounts) {
         continue
     }
 
-    $plainPassword = New-RandomPassword
-    $securePassword = ConvertTo-SecureString $plainPassword -AsPlainText -Force
-
     try {
-        New-LocalUser -Name $uname -Password $securePassword -FullName $uname `
+        New-LocalUser -Name $uname -Password $SecureInitialPassword -FullName $uname `
             -Description "os-setup 자동 생성 계정 ($(Get-TimeStamp))" -ErrorAction Stop | Out-Null
 
         # New-LocalUser는 "다음 로그온 시 암호 변경 필수" 옵션을 직접
@@ -94,25 +102,16 @@ foreach ($acct in $HostAccounts) {
         }
 
         Add-ManifestRecord -ManifestName "created_accounts.txt" -Value $uname
-        $createdSummary.Add([PSCustomObject]@{ User = $uname; TempPassword = $plainPassword })
+        $createdUsers.Add($uname)
         Log-Success "계정 생성 완료: $uname (그룹: $($acct.Groups -join ', '))"
     } catch {
         Log-Error "계정 생성 실패: $uname ($($_.Exception.Message))"
         $fail = $true
     }
-
-    $plainPassword = $null
-    $securePassword = $null
 }
 
-if ($createdSummary.Count -gt 0) {
-    Write-Host ""
-    Write-Host "==================================================" -ForegroundColor Magenta
-    Write-Host " 아래 임시 비밀번호는 이번 실행에서만 출력되며 어디에도" -ForegroundColor Magenta
-    Write-Host " 저장되지 않습니다. 지금 안전한 곳에 기록해두세요." -ForegroundColor Magenta
-    Write-Host " (각 계정은 다음 로그온 시 반드시 비밀번호를 변경해야 합니다)" -ForegroundColor Magenta
-    Write-Host "==================================================" -ForegroundColor Magenta
-    $createdSummary | Format-Table -AutoSize | Out-String | Write-Host
+if ($createdUsers.Count -gt 0) {
+    Log-Success "생성된 계정: $($createdUsers -join ', ') (호스트 env에 지정된 초기 비밀번호 적용됨, 다음 로그온 시 변경 필요)"
 }
 
 if ($fail) {

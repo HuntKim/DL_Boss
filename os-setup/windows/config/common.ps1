@@ -73,6 +73,7 @@ function Load-HostEnv {
     $Global:HostVolumes         = @()
     $Global:HostDirPermissions  = @()
     $Global:HostOsParamProfile  = ""
+    $Global:HostInitialPassword = ""
 
     . $hostEnvFile
 
@@ -85,7 +86,7 @@ function Load-HostEnv {
     #   발견). 그래서 dot-source 직후 각 값을 명시적으로 Global 스코프로
     #   다시 밀어넣는다 - 호스트 env 파일이 "$Global:HostGroups = ..."
     #   식으로 이미 전역에 썼어도(중복이지만) 문제 없이 동작한다.
-    foreach ($varName in @('HostGroups', 'HostAccounts', 'HostVolumes', 'HostDirPermissions', 'HostOsParamProfile')) {
+    foreach ($varName in @('HostGroups', 'HostAccounts', 'HostVolumes', 'HostDirPermissions', 'HostOsParamProfile', 'HostInitialPassword')) {
         Set-Variable -Name $varName -Value (Get-Variable -Name $varName -ValueOnly) -Scope Global
     }
 
