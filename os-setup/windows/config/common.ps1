@@ -20,13 +20,19 @@ function Log-Success ([string]$msg) { Write-Host "[SUCCESS] $(Get-TimeStamp) - [
 # ------------------------------------------------------------------------------
 $Global:OsSetupWindowsConfigDir = $PSScriptRoot
 $Global:OsSetupWindowsDir       = Split-Path $PSScriptRoot -Parent
-$Global:EnvDir                  = Join-Path $OsSetupWindowsConfigDir "env"
+$Global:EnvDir                  = Join-Path $OsSetupWindowsConfigDir "host_env"
 $Global:OsParamProfileDir       = Join-Path $OsSetupWindowsConfigDir "os_param_profiles"
 $Global:BackupDir               = "C:\os-setup-backup"   # rollback용 생성 기록(manifest) 저장 위치
 
+# ※ sw_modules\setup_sw.ps1는 별도로 config\env\<hostname>.ps1 를 본다
+#   (os-setup-main에서 그대로 가져온 것이라 그 경로를 바꾸지 않음). 처음엔
+#   이 프로젝트도 같은 config\env\ 를 썼는데, 계정/스토리지 정의와 SW
+#   모듈 오버라이드가 같은 파일(같은 이름)을 가리키게 되어 헷갈린다는
+#   지적을 받아 host_env\ 로 분리함.
+
 # ------------------------------------------------------------------------------
 # 호스트별 env 파일 로드
-#   config/env/<hostname>.ps1 가 없으면 명확히 에러로 중단한다.
+#   config/host_env/<hostname>.ps1 가 없으면 명확히 에러로 중단한다.
 # ------------------------------------------------------------------------------
 function Load-HostEnv {
     $script:HostnameShort = $env:COMPUTERNAME
@@ -34,7 +40,7 @@ function Load-HostEnv {
 
     if (-not (Test-Path $hostEnvFile)) {
         Log-Error "호스트 전용 env 파일이 없습니다: $hostEnvFile"
-        Log-Error "이 호스트($($script:HostnameShort))에 대한 설정을 config/env/$($script:HostnameShort).ps1 에 먼저 정의해야 합니다."
+        Log-Error "이 호스트($($script:HostnameShort))에 대한 설정을 config/host_env/$($script:HostnameShort).ps1 에 먼저 정의해야 합니다."
         exit 1
     }
 
