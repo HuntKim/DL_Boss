@@ -373,8 +373,8 @@ OS_ENV_DRAFT="${HOST_OUT_DIR}/os_env_draft.env"
     echo
     echo "# TODO: 새로 생성되는 모든 계정에 적용할 초기 비밀번호를 채우세요"
     echo "# (useradd만으로는 계정이 잠겨서 로그인이 안 됨. account_gen.sh가 이 값으로"
-    echo "#  chpasswd + chage -d 0(다음 로그인 시 변경 강제)을 적용함 - config/os_env/ 는"
-    echo "#  git에 커밋되는 파일이므로 실제로 재사용하는 비밀번호를 넣으면 안 됨)"
+    echo "#  chpasswd를 적용함 - config/os_env/ 는 git에 커밋되는 파일이므로 실제로"
+    echo "#  재사용하는 비밀번호를 넣으면 안 됨. hiware를 통해 담당자가 곧 변경할)"
     echo "HOST_INITIAL_PASSWORD=\"\""
     echo
     echo "# 형식: \"마운트포인트:크기(GB):VG명\""

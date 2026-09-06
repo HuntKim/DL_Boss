@@ -8,8 +8,11 @@
 #   방식은 계정이 여러 개일 때 담당자가 비밀번호를 하나하나 따로
 #   전달/관리해야 해서 번거롭다는 피드백에 따라 단순화함 - 담당자가
 #   이 초기 비밀번호로 로그온해 바로 자신의 비밀번호로 바꾸는 것을
-#   전제로 하므로, 재사용되는 값이 아니다. 계정은 "다음 로그온 시 암호
-#   변경 필수"로 설정된다.
+#   전제로 하므로, 재사용되는 값이 아니다.
+#   ※ "다음 로그온 시 반드시 암호 변경" 강제(PasswordExpired)는 넣지
+#     않는다 - hiware 쪽에서 이미 로그온 시 비밀번호 변경을 처리하고
+#     있어서, OS 레벨에서 중복으로 강제하면 오류가 날 수 있다는
+#     피드백에 따라 뺐다.
 # ==============================================================================
 # 사용법: powershell -ExecutionPolicy Bypass -File .\Account-Gen.ps1 [-Yes]
 # ==============================================================================
@@ -83,16 +86,6 @@ foreach ($acct in $HostAccounts) {
         New-LocalUser -Name $uname -Password $SecureInitialPassword -FullName $uname `
             -Description "os-setup 자동 생성 계정 ($(Get-TimeStamp))" -ErrorAction Stop | Out-Null
 
-        # New-LocalUser는 "다음 로그온 시 암호 변경 필수" 옵션을 직접
-        # 노출하지 않으므로 WinNT ADSI provider로 설정한다(표준적인 방법).
-        try {
-            $objUser = [ADSI]"WinNT://$env:COMPUTERNAME/$uname,user"
-            $objUser.PasswordExpired = 1
-            $objUser.SetInfo()
-        } catch {
-            Log-Warn "'다음 로그온 시 암호 변경' 설정 실패: $uname ($($_.Exception.Message)) - 수동으로 설정 필요"
-        }
-
         foreach ($grp in $acct.Groups) {
             try {
                 Add-LocalGroupMember -Group $grp -Member $uname -ErrorAction Stop
@@ -111,7 +104,7 @@ foreach ($acct in $HostAccounts) {
 }
 
 if ($createdUsers.Count -gt 0) {
-    Log-Success "생성된 계정: $($createdUsers -join ', ') (호스트 env에 지정된 초기 비밀번호 적용됨, 다음 로그온 시 변경 필요)"
+    Log-Success "생성된 계정: $($createdUsers -join ', ') (호스트 env에 지정된 초기 비밀번호 적용됨)"
 }
 
 if ($fail) {

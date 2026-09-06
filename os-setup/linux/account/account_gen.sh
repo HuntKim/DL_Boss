@@ -73,10 +73,11 @@ fi
 # 2. 계정 생성 (모든 신규 계정에 HOST_INITIAL_PASSWORD 하나를 동일하게 적용)
 #   형식: "계정명:1차그룹:UID:홈디렉터리:로그인쉘:추가그룹(세미콜론,옵션)"
 #   ※ useradd만으로는 계정이 잠긴 상태로 생성되어 비밀번호 로그인이
-#     안 된다. chpasswd로 초기 비밀번호를 설정하고, chage -d 0으로
-#     "다음 로그인 시 반드시 비밀번호 변경"을 강제한다(Windows의
-#     PasswordExpired 설정과 동일한 개념). 담당자가 이 초기 비밀번호로
-#     로그인해 바로 자신의 비밀번호로 바꾸는 것을 전제로 한다.
+#     안 된다. chpasswd로 초기 비밀번호를 설정한다.
+#     ※ "다음 로그인 시 반드시 비밀번호 변경" 강제(chage -d 0)는 넣지
+#       않는다 - hiware 쪽에서 이미 로그인 시 비밀번호 변경을 처리하고
+#       있어서, OS 레벨에서 중복으로 강제하면 오류가 날 수 있다는
+#       피드백에 따라 뺐다.
 # ==============================================================================
 NEEDS_NEW_ACCOUNTS=false
 for entry in "${HOST_ACCOUNTS[@]}"; do
@@ -127,8 +128,7 @@ for entry in "${HOST_ACCOUNTS[@]}"; do
     manifest_record "created_accounts.txt" "$uname"
 
     if echo "${uname}:${HOST_INITIAL_PASSWORD}" | chpasswd; then
-        chage -d 0 "$uname"
-        log_success "초기 비밀번호 설정 완료: ${uname} (다음 로그인 시 변경 필요)"
+        log_success "초기 비밀번호 설정 완료: ${uname}"
         created_accounts+=("$uname")
     else
         log_error "초기 비밀번호 설정 실패: ${uname}"
@@ -137,7 +137,7 @@ for entry in "${HOST_ACCOUNTS[@]}"; do
 done
 
 if [ "${#created_accounts[@]}" -gt 0 ]; then
-    log_success "생성된 계정: ${created_accounts[*]} (호스트 env에 지정된 초기 비밀번호 적용됨, 다음 로그인 시 변경 필요)"
+    log_success "생성된 계정: ${created_accounts[*]} (호스트 env에 지정된 초기 비밀번호 적용됨)"
 fi
 
 if [ "$ACCOUNT_FAIL" -ne 0 ]; then
