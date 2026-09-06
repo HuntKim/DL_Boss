@@ -43,17 +43,24 @@ powershell -ExecutionPolicy Bypass -File .\Collect-AsIs.ps1 [-OutputDir <경로>
 | `storage.txt` | df, lsblk, blkid, fstab, LVM / Volume, Partition, Disk | 참고용 |
 | `sw_packages_raw.txt` | 설치된 패키지/SW 전체 목록 | 참고용 |
 | `sw_mapping_draft.txt` | JDK/Oracle Client 등 자동 인식 draft (`sw_mapping_linux.txt`/`sw_mapping_window.txt` 형식 - 이 부분은 os-setup에서도 SW 모듈이 원래 방식 그대로라 CSV 성격 그대로 유지됨) | **초안 - 검토 필요** |
-| `os_env_draft.env` / `.ps1` | **계정+스토리지+권한을 하나로 합친 draft** (CSV 아님). `HOST_GROUPS`/`HOST_ACCOUNTS`/`HOST_FILESYSTEMS`/`HOST_DIR_PERMISSIONS` (linux) 또는 `$HostGroups`/`$HostAccounts`/`$HostVolumes`/`$HostDirPermissions` (windows) 배열을 전부 담고 있어, 검토 후 파일명을 `<hostname>.{env,ps1}`로 바꿔서 `config/os_env/`에 두면 그대로 쓸 수 있다 | **초안 - 검토 필요, `HOST_OS_PARAM_PROFILE`은 빈 값이라 직접 채워야 함** |
+| `os_param_profile_draft.param.conf` | Linux 전용, OS 파라미터 프로파일 draft (`sysctl.conf`/`sysctl.d`, `limits.conf`/`limits.d`에 실제로 적힌 줄만 모음 - `sysctl -a` 전체 덤프 아님) | **초안 - 검토 필요, 배포판 기본값이 섞여 있을 수 있음** |
+| `os_env_draft.env` / `.ps1` | **계정+스토리지+권한을 하나로 합친 draft** (CSV 아님). `HOST_GROUPS`/`HOST_ACCOUNTS`/`HOST_FILESYSTEMS`/`HOST_DIR_PERMISSIONS` (linux) 또는 `$HostGroups`/`$HostAccounts`/`$HostVolumes`/`$HostDirPermissions` (windows) 배열을 전부 담고 있어, 검토 후 파일명을 `<hostname>.{env,ps1}`로 바꿔서 `config/os_env/`에 두면 그대로 쓸 수 있다 | **초안 - 검토 필요** |
 
 **`os_env_draft.env`/`.ps1`은 반드시 사람이 검토한 후** 파일명을
 `<hostname>.env`/`.ps1`로 바꿔 `os-setup/{linux,windows}/config/os_env/`
 아래 그대로 두면 된다(내용 수정 없이 파일명만 바꿔도 되도록 os-setup이
 그대로 기대하는 배열 형식으로 생성됨 - 실제로 os-setup의
-`account_verify.sh`로 인식되는 것까지 확인함). 단, `HOST_OS_PARAM_PROFILE`
-(windows는 `HostDirPermissions`도 함께)은 AS-IS 값만으로 자동 판단할 수
-없어 빈 값으로 남겨두므로 직접 채워야 한다. `sw_mapping_draft.txt`는
-`config/sw_mapping_*.txt`에 별도로 반영한다(SW 모듈은 원래 방식 그대로
-유지되는 부분이라 자동 병합되지 않음).
+`account_verify.sh`로 인식되는 것까지 확인함). `HOST_OS_PARAM_PROFILE`은
+기본으로 호스트명이 들어있다(서버 1대당 프로파일 파일 1개가 기본 - 다른
+서버와 값이 완전히 같다고 확인되면 그 서버들과 같은 프로파일명으로 바꿔서
+공유해도 된다). `os_param_profile_draft.param.conf`(Linux)를 검토해서
+배포판 기본값을 걷어내고 실제 필요한 값만 남긴 뒤
+`config/os_param_profiles/<프로파일명>.param.conf`로 옮기면 된다 - 실제로
+파일명만 바꿔서 `os_param_apply.sh`가 인식하는 것까지 확인함. Windows는
+레지스트리 특성상 "뭐가 커스텀인지" 안전하게 구분하기 어려워 이 draft가
+없고, `HostOsParamProfile`을 직접 채워야 한다.
+`sw_mapping_draft.txt`는 `config/sw_mapping_*.txt`에 별도로 반영한다(SW
+모듈은 원래 방식 그대로 유지되는 부분이라 자동 병합되지 않음).
 
 ## 계정 정보와 비밀번호
 

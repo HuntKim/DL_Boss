@@ -183,6 +183,37 @@ CRON_FILE="${HOST_OUT_DIR}/crontabs.txt"
 log_success "OS 파라미터/크론탭 수집 완료: ${OS_PARAM_FILE}, ${CRON_FILE}"
 
 # ==============================================================================
+# 2-1. OS 파라미터 프로파일 draft용 원본 수집
+#   sysctl -a는 현재 커널의 "모든" 값(수백~천 개)을 그대로 보여줘서 실제로
+#   사람이 튜닝한 값과 OS 기본값을 구분할 수 없다. 그래서 os_param_profiles의
+#   <프로파일명>.param.conf draft는 sysctl -a가 아니라, 실제로 값을 바꿀 때
+#   편집하는 설정 파일들(/etc/sysctl.conf, /etc/sysctl.d/*.conf,
+#   /etc/security/limits.conf, /etc/security/limits.d/*.conf)의 내용만
+#   그대로 모아서 만든다 - 이 파일들에 실제로 적혀 있는 줄은 배포판
+#   기본값이 아니라 누군가 의도적으로 추가한 값일 가능성이 높다.
+#   단, 배포판이 기본으로 깔아두는 파일이 섞여 있을 수 있어 사람이 검토해서
+#   실제로 필요한 값만 추려야 한다(각 줄이 어느 파일에서 왔는지 주석으로
+#   표시해둠).
+# ==============================================================================
+param_profile_lines=()
+for f in /etc/sysctl.conf /etc/sysctl.d/*.conf /etc/security/limits.conf /etc/security/limits.d/*.conf; do
+    [ -f "$f" ] || continue
+    file_has_content=false
+    while IFS= read -r line; do
+        case "$line" in
+            ''|'#'*) continue ;;
+        esac
+        if [ "$file_has_content" = false ]; then
+            param_profile_lines+=("# --- ${f} ---")
+            file_has_content=true
+        fi
+        param_profile_lines+=("$line")
+    done < "$f"
+done
+
+log_info "OS 파라미터 프로파일 draft용 항목 ${#param_profile_lines[@]}건 수집 완료 (sysctl.conf/sysctl.d, limits.conf/limits.d 기준)"
+
+# ==============================================================================
 # 3. Storage 정보 수집 (볼륨/파티션 구성)
 #   storage.txt : df/lsblk/blkid/fstab/LVM 원본
 #   HOST_FILESYSTEMS(스토리지)/HOST_DIR_PERMISSIONS(디렉터리 권한) 배열은
@@ -353,12 +384,43 @@ OS_ENV_DRAFT="${HOST_OUT_DIR}/os_env_draft.env"
     if [ "${#perm_lines[@]}" -gt 0 ]; then printf '%s\n' "${perm_lines[@]}"; fi
     echo ")"
     echo
-    echo "# TODO: config/os_param_profiles/ 아래 적절한 프로파일명을 정해서 채우세요"
-    echo "# (AS-IS 값만으로는 자동 판단할 수 없음 - os_parameters.txt 참고)"
-    echo "HOST_OS_PARAM_PROFILE=\"\""
+    echo "# 프로파일명은 기본으로 이 호스트명을 넣어뒀다(서버 1대당 프로파일 1개)."
+    echo "# 다른 서버와 값이 완전히 같은 게 확인되면 그 서버들과 같은 프로파일명을"
+    echo "# 쓰도록 바꿔서 파일을 공유해도 된다 - config/os_param_profiles/${HOSTNAME_SHORT}.param.conf"
+    echo "# (os_param_profile_draft.param.conf 를 검토 후 이 이름으로 옮겨두면 된다) 참고."
+    echo "HOST_OS_PARAM_PROFILE=\"${HOSTNAME_SHORT}\""
 } > "$OS_ENV_DRAFT"
 
 log_success "os_env_draft.env 생성 완료: ${OS_ENV_DRAFT}"
+
+# ==============================================================================
+# 5-1. OS 파라미터 프로파일 draft 출력
+#   os-setup/linux/config/os_param_profiles/<프로파일명>.param.conf 가
+#   그대로 기대하는 형식(sysctl/limits 줄을 섞어서, "=" 유무로 자동 분류)
+#   그대로 만든다. 검토 후 파일명을 config/os_param_profiles/<프로파일명>
+#   .param.conf 로 옮기면 된다(기본값은 위 os_env_draft.env에 넣어둔 대로
+#   이 호스트명 - 서버 1대당 프로파일 파일 1개가 기본).
+#   ※ sysctl.conf/sysctl.d, limits.conf/limits.d 파일에 실제로 적혀 있는
+#     줄만 모은 것이라 sysctl -a 전체 덤프보다 훨씬 적지만, 배포판이
+#     기본으로 깔아두는 항목이 섞여 있을 수 있으니 반드시 검토해서
+#     실제로 필요한 값만 추릴 것.
+# ==============================================================================
+PARAM_PROFILE_DRAFT="${HOST_OUT_DIR}/os_param_profile_draft.param.conf"
+{
+    echo "# config/os_param_profiles/${HOSTNAME_SHORT}.param.conf 후보 - 검토 후"
+    echo "# (배포판 기본값이 섞여 있을 수 있으니 실제로 필요한 값만 추릴 것)"
+    echo "# 이 파일명을 <프로파일명>.param.conf 로 바꿔서(기본은 호스트명)"
+    echo "# config/os_param_profiles/ 아래에 두면 된다."
+    echo
+    if [ "${#param_profile_lines[@]}" -gt 0 ]; then
+        printf '%s\n' "${param_profile_lines[@]}"
+    else
+        echo "# /etc/sysctl.conf, /etc/sysctl.d/*.conf, /etc/security/limits.conf,"
+        echo "# /etc/security/limits.d/*.conf 어디에도 커스텀 항목이 없었습니다."
+    fi
+} > "$PARAM_PROFILE_DRAFT"
+
+log_success "os_param_profile_draft.param.conf 생성 완료: ${PARAM_PROFILE_DRAFT}"
 
 # ==============================================================================
 # 6. 전송 편의를 위한 압축
@@ -371,5 +433,5 @@ log_info " ★ AS-IS 정보 수집 완료: ${HOSTNAME_SHORT}"
 log_info "  - 출력 디렉토리 : ${HOST_OUT_DIR}"
 log_info "  - 압축 파일     : ${ARCHIVE_PATH}"
 log_info "=================================================="
-log_warn "os_env_draft.env / sw_mapping_draft.txt 는 초안입니다."
-log_warn "반드시 검토 후(특히 HOST_OS_PARAM_PROFILE 채우기) os-setup 쪽 설정 파일에 반영하세요."
+log_warn "os_env_draft.env / os_param_profile_draft.param.conf / sw_mapping_draft.txt 는 초안입니다."
+log_warn "반드시 검토 후(배포판 기본값이 섞여 있을 수 있음) os-setup 쪽 설정 파일에 반영하세요."
