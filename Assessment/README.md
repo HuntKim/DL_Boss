@@ -38,18 +38,20 @@ powershell -ExecutionPolicy Bypass -File .\Collect-AsIs.ps1 [-OutputDir <경로>
 | 파일 | 내용 | 비고 |
 |---|---|---|
 | `accounts_raw_*` | 계정/그룹 원본 전체 | 감사/참고용 |
-| `accounts_gen_draft.csv` | 실사용 계정만 추린 draft | **초안 - 검토 필요** |
+| `accounts_gen_draft.env` / `.ps1` | 실사용 계정만 추린 draft (CSV 아님, os-setup의 `HOST_GROUPS`/`HOST_ACCOUNTS` bash 배열 또는 `$HostGroups`/`$HostAccounts` 형식) | **초안 - 검토 필요** |
 | `os_parameters.txt` | sysctl, limits, 네트워크, SELinux/방화벽 등 | 참고용 |
 | `crontabs.txt` / `scheduled_tasks.txt` | 크론탭 / 예약 작업 | 참고용 |
 | `storage.txt` | df, lsblk, blkid, fstab, LVM / Volume, Partition, Disk | 참고용 |
-| `filesystem_gen_draft.txt` | Linux 전용, 커스텀 마운트포인트 draft | **초안 - 검토 필요** |
+| `filesystem_gen_draft.env` | Linux 전용, 커스텀 마운트포인트 draft (CSV 아님, `HOST_FILESYSTEMS`/`HOST_DIR_PERMISSIONS` bash 배열 형식) | **초안 - 검토 필요** |
 | `sw_packages_raw.txt` | 설치된 패키지/SW 전체 목록 | 참고용 |
-| `sw_mapping_draft.txt` | JDK/Oracle Client 등 자동 인식 draft | **초안 - 검토 필요** |
+| `sw_mapping_draft.txt` | JDK/Oracle Client 등 자동 인식 draft (`sw_mapping_linux.txt`/`sw_mapping_window.txt` 형식 - 이 부분은 os-setup에서도 SW 모듈이 원래 방식 그대로라 CSV 성격 그대로 유지됨) | **초안 - 검토 필요** |
 
-**"draft" 표시된 파일은 반드시 사람이 검토한 후** `os-setup-main` 쪽 설정
-파일(`Linux_user_gen.txt`, `Linux_filesystem_gen.txt`, `sw_mapping_linux.txt`,
-`sw_mapping_window.txt` 등)에 수동으로 반영해야 한다. 자동으로 병합/적용
-되지 않는다.
+**"draft" 표시된 파일은 반드시 사람이 검토한 후** `os-setup` 쪽 설정 파일
+(`config/os_env/<hostname>.{env,ps1}`, `config/os_param_profiles/`,
+`config/sw_mapping_*.txt` 등)에 수동으로 반영해야 한다. 자동으로 병합/적용
+되지 않는다. `accounts_gen_draft`/`filesystem_gen_draft`는 os-setup의
+실제 host env 스키마 그대로 생성되므로, 검토 후 해당 내용을 그대로
+`config/os_env/<hostname>.{env,ps1}` 파일에 복사해 넣으면 된다.
 
 ## 계정 정보와 비밀번호
 

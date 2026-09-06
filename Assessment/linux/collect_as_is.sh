@@ -76,8 +76,10 @@ log_info "감지된 OS: ${OS_NAME} ${OS_VERSION} (패키지 계열: ${PKG_FAMILY
 # ==============================================================================
 # 1. 계정/그룹 정보 수집
 #   (a) accounts_raw_*.txt   : getent passwd/group 전체 원본 (감사/참고용)
-#   (b) accounts_gen_draft.csv : Linux_user_gen.txt 와 동일한 컬럼으로 생성한
-#       "실제 사용자/서비스 계정으로 추정되는" 계정만 추린 draft.
+#   (b) accounts_gen_draft.env : os-setup/linux/config/os_env/<hostname>.env가
+#       그대로 기대하는 HOST_GROUPS/HOST_ACCOUNTS bash 배열 형식으로 생성한
+#       "실제 사용자/서비스 계정으로 추정되는" 계정만 추린 draft (CSV 아님 -
+#       그대로 os_env/<hostname>.env에 복사해 붙여넣을 수 있게 함).
 #       판별 기준: 로그인 쉘이 nologin류가 아닌 "실사용 쉘"인 계정만 포함하고
 #       root는 제외한다 (TO-BE 서버에도 root는 기본 존재하므로).
 #       표준 시스템 계정(bin, daemon, sshd 등)은 보통 쉘이 nologin이라
@@ -88,10 +90,12 @@ log_info "[1/4] 계정/그룹 정보 수집 중..."
 getent passwd > "${HOST_OUT_DIR}/accounts_raw_passwd.txt"
 getent group  > "${HOST_OUT_DIR}/accounts_raw_group.txt"
 
-ACCOUNTS_CSV="${HOST_OUT_DIR}/accounts_gen_draft.csv"
-echo "hostname,user,group,uid,gid,home dir,start shell,sec_group" > "$ACCOUNTS_CSV"
-
+ACCOUNTS_ENV_DRAFT="${HOST_OUT_DIR}/accounts_gen_draft.env"
 REAL_SHELLS_REGEX='^/(usr/)?(bin|sbin)/(bash|sh|csh|ksh|tcsh|zsh|dash)$'
+
+declare -A seen_groups=()
+group_lines=()
+account_lines=()
 
 while IFS=: read -r uname _ uid gid _ home shell; do
     [ "$uname" = "root" ] && continue
@@ -100,14 +104,42 @@ while IFS=: read -r uname _ uid gid _ home shell; do
     primary_group=$(getent group "$gid" 2>/dev/null | cut -d: -f1)
     [ -z "$primary_group" ] && primary_group="$gid"
 
-    # 1차 그룹을 제외한 나머지 소속 그룹을 ';' 로 연결 (windows 쪽
-    # sw_mapping/user_gen 파일과 동일하게 세미콜론 구분자 사용)
-    sec_groups=$(id -Gn "$uname" 2>/dev/null | tr ' ' '\n' | grep -vx "$primary_group" | paste -sd';' - 2>/dev/null)
+    if [ -z "${seen_groups[$primary_group]:-}" ]; then
+        group_lines+=("    \"${primary_group}:${gid}\"")
+        seen_groups["$primary_group"]=1
+    fi
 
-    echo "${HOSTNAME_SHORT},${uname},${primary_group},${uid},${gid},${home},${shell},${sec_groups}" >> "$ACCOUNTS_CSV"
+    # 1차 그룹을 제외한 나머지 소속 그룹을 ';' 로 연결 (os-setup의
+    # HOST_ACCOUNTS 추가그룹 필드 규칙과 동일한 구분자)
+    sec_groups=$(id -Gn "$uname" 2>/dev/null | tr ' ' '\n' | grep -vx "$primary_group")
+    sec_groups_semicolon=$(echo "$sec_groups" | paste -sd';' - 2>/dev/null)
+
+    while IFS= read -r sg; do
+        [ -z "$sg" ] && continue
+        if [ -z "${seen_groups[$sg]:-}" ]; then
+            sg_gid=$(getent group "$sg" 2>/dev/null | cut -d: -f3)
+            group_lines+=("    \"${sg}:${sg_gid}\"")
+            seen_groups["$sg"]=1
+        fi
+    done <<< "$sec_groups"
+
+    account_lines+=("    \"${uname}:${primary_group}:${uid}:${home}:${shell}:${sec_groups_semicolon}\"")
 done < "${HOST_OUT_DIR}/accounts_raw_passwd.txt"
 
-log_success "계정/그룹 수집 완료: ${ACCOUNTS_CSV} (참고 원본: accounts_raw_passwd.txt/accounts_raw_group.txt)"
+{
+    echo "# os-setup/linux/config/os_env/${HOSTNAME_SHORT}.env 에 그대로 붙여넣을 draft"
+    echo "# 형식: \"그룹명:GID\""
+    echo "HOST_GROUPS=("
+    if [ "${#group_lines[@]}" -gt 0 ]; then printf '%s\n' "${group_lines[@]}"; fi
+    echo ")"
+    echo
+    echo "# 형식: \"계정명:1차그룹:UID:홈디렉터리:로그인쉘:추가그룹(세미콜론구분,옵션)\""
+    echo "HOST_ACCOUNTS=("
+    if [ "${#account_lines[@]}" -gt 0 ]; then printf '%s\n' "${account_lines[@]}"; fi
+    echo ")"
+} > "$ACCOUNTS_ENV_DRAFT"
+
+log_success "계정/그룹 수집 완료: ${ACCOUNTS_ENV_DRAFT} (참고 원본: accounts_raw_passwd.txt/accounts_raw_group.txt)"
 
 # ==============================================================================
 # 2. OS 파라미터 / 크론탭 등 서버 설정 값 수집
@@ -170,8 +202,11 @@ log_success "OS 파라미터/크론탭 수집 완료: ${OS_PARAM_FILE}, ${CRON_F
 # ==============================================================================
 # 3. Storage 정보 수집 (볼륨/파티션 구성)
 #   (a) storage.txt : df/lsblk/blkid/fstab/LVM 원본
-#   (b) filesystem_gen_draft.txt : Linux_filesystem_gen.txt 와 동일한
-#       "path:size(GB):vg,owner,group,perm" 반복 구조로 만든 draft.
+#   (b) filesystem_gen_draft.env : os-setup/linux/config/os_env/<hostname>.env가
+#       그대로 기대하는 HOST_FILESYSTEMS(스토리지)/HOST_DIR_PERMISSIONS
+#       (디렉터리 권한) bash 배열 형식으로 생성한 draft (CSV 아님). os-setup은
+#       스토리지 구성과 디렉터리 권한을 별개 모듈로 다루므로 이 둘을
+#       나눠서 출력한다.
 #       기본 OS 마운트(/, /boot, /var, /tmp, /home 등)는 제외하고
 #       "업무용으로 별도 구성된" 마운트포인트만 추출한다.
 #       VG명은 LVM 조회로 추정하며, LVM이 아니거나 추정 실패 시 appvg로
@@ -202,16 +237,16 @@ STORAGE_FILE="${HOST_OUT_DIR}/storage.txt"
     fi
 } > "$STORAGE_FILE" 2>&1
 
-STORAGE_DRAFT="${HOST_OUT_DIR}/filesystem_gen_draft.txt"
+STORAGE_DRAFT="${HOST_OUT_DIR}/filesystem_gen_draft.env"
 DEFAULT_MOUNTS_REGEX='^(/|/boot|/boot/efi|/var|/var/log|/var/log/audit|/var/tmp|/tmp|/home|/usr|/opt)$'
 DEFAULT_VG="appvg"
 
-draft_line="$HOSTNAME_SHORT"
-custom_mount_found=false
+fs_lines=()
+perm_lines=()
+
 while read -r mnt; do
     [ -z "$mnt" ] && continue
     echo "$mnt" | grep -qE "$DEFAULT_MOUNTS_REGEX" && continue
-    custom_mount_found=true
 
     size_gb=$(df -BG --output=size "$mnt" 2>/dev/null | tail -1 | tr -dc '0-9')
     [ -z "$size_gb" ] && size_gb=0
@@ -228,14 +263,26 @@ while read -r mnt; do
         fi
     fi
 
-    draft_line="${draft_line},${mnt}:${size_gb}:${vg},${owner},${group},${perm}"
+    fs_lines+=("    \"${mnt}:${size_gb}:${vg}\"")
+    perm_lines+=("    \"${mnt}:${owner}:${group}:${perm}\"")
 done < <(findmnt -rn -o TARGET -t xfs,ext4,ext3,ext2,btrfs 2>/dev/null)
 
-if [ "$custom_mount_found" = true ]; then
-    echo "$draft_line" > "$STORAGE_DRAFT"
-else
-    echo "# 기본 OS 마운트 외 별도 구성된 마운트포인트가 발견되지 않았습니다." > "$STORAGE_DRAFT"
-fi
+{
+    echo "# os-setup/linux/config/os_env/${HOSTNAME_SHORT}.env 에 그대로 붙여넣을 draft"
+    echo "# 형식: \"마운트포인트:크기(GB):VG명\""
+    echo "HOST_FILESYSTEMS=("
+    if [ "${#fs_lines[@]}" -gt 0 ]; then printf '%s\n' "${fs_lines[@]}"; fi
+    echo ")"
+    echo
+    echo "# 형식: \"경로:소유자:그룹:권한(octal)\""
+    echo "HOST_DIR_PERMISSIONS=("
+    if [ "${#perm_lines[@]}" -gt 0 ]; then printf '%s\n' "${perm_lines[@]}"; fi
+    echo ")"
+    if [ "${#fs_lines[@]}" -eq 0 ]; then
+        echo
+        echo "# 기본 OS 마운트 외 별도 구성된 마운트포인트가 발견되지 않았습니다."
+    fi
+} > "$STORAGE_DRAFT"
 
 log_success "Storage 정보 수집 완료: ${STORAGE_FILE}, ${STORAGE_DRAFT}"
 
@@ -316,5 +363,5 @@ log_info " ★ AS-IS 정보 수집 완료: ${HOSTNAME_SHORT}"
 log_info "  - 출력 디렉토리 : ${HOST_OUT_DIR}"
 log_info "  - 압축 파일     : ${ARCHIVE_PATH}"
 log_info "=================================================="
-log_warn "draft 파일(accounts_gen_draft.csv, filesystem_gen_draft.txt, sw_mapping_draft.txt)은"
-log_warn "초안입니다. 반드시 검토 후 os-setup-main 쪽 설정 파일에 반영하세요."
+log_warn "draft 파일(accounts_gen_draft.env, filesystem_gen_draft.env, sw_mapping_draft.txt)은"
+log_warn "반드시 검토 후 os-setup 쪽 설정 파일(config/os_env/, config/os_param_profiles/ 등)에 반영하세요."

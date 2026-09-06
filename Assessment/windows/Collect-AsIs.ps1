@@ -14,7 +14,7 @@
 #   기본 출력 경로: C:\assessment_output
 #   관리자 권한 권장(예약 작업/방화벽 등 일부 항목은 권한이 있어야 조회됨).
 #
-# 출력물은 os-setup-main/windows 쪽 TO-BE 자동화(계정 생성, SW 매핑
+# 출력물은 os-setup/windows 쪽 TO-BE 자동화(계정 생성, SW 매핑
 # sw_mapping_window.txt 등)에서 참고/병합할 수 있도록 draft 파일을 같이
 # 생성한다. draft는 초안일 뿐이며 반드시 사람이 검토 후 반영해야 한다.
 #
@@ -50,11 +50,15 @@ if (-not $IsAdmin) {
 # ==============================================================================
 # 1. 계정/그룹 정보 (비밀번호는 절대 수집하지 않음)
 #   (a) accounts_raw.txt        : Get-LocalUser/Get-LocalGroup 원본 (감사/참고용)
-#   (b) accounts_gen_draft.csv  : windows_user_gen.txt 계열 자동화에서 참고할
-#       "실제 업무용으로 추가 생성된" 계정만 추린 draft.
+#   (b) accounts_gen_draft.ps1  : os-setup/windows/config/os_env/<hostname>.ps1
+#       가 그대로 기대하는 $HostGroups/$HostAccounts 배열 형식으로 생성한
+#       draft (CSV 아님). 활성화된 "실제 업무용" 계정만 추린다.
 #       기본 내장 계정(Administrator/Guest/DefaultAccount/WDAGUtilityAccount)과
-#       비활성화된 계정은 제외한다. 비밀번호 컬럼은 두지 않는다 - TO-BE
-#       생성 시 새 임시 비밀번호를 별도로 발급해야 한다.
+#       비활성화된 계정은 제외한다. 그룹도 내장(Administrators/Users 등)은
+#       제외하고 커스텀 그룹만 $HostGroups에 담는다(내장 그룹은 SID가
+#       S-1-5-32-* 패턴이라는 점으로 판별 - 그룹명은 로캘에 따라 달라질 수
+#       있어 이름 대신 SID로 구분함). 비밀번호 필드는 두지 않는다 - TO-BE
+#       생성 시 Account-Gen.ps1이 임시 비밀번호를 자동 생성한다.
 # ==============================================================================
 Log-Info "[1/4] 로컬 계정/그룹 정보 수집 중..."
 
@@ -77,12 +81,18 @@ foreach ($grp in Get-LocalGroup) {
 }
 $sb.ToString() | Out-File -FilePath $AccountsRaw -Encoding UTF8
 
-$AccountsDraft = Join-Path $HostOutDir "accounts_gen_draft.csv"
+$AccountsEnvDraft = Join-Path $HostOutDir "accounts_gen_draft.ps1"
 $builtinNames = @('Administrator', 'Guest', 'DefaultAccount', 'WDAGUtilityAccount')
-$draftLines = New-Object System.Collections.Generic.List[string]
-$draftLines.Add("hostname,user,enabled,groups")
 
-foreach ($u in (Get-LocalUser | Where-Object { $builtinNames -notcontains $_.Name })) {
+# 내장 로컬 그룹은 SID가 S-1-5-32-* 패턴(BUILTIN 도메인)을 따른다.
+$customGroups = Get-LocalGroup | Where-Object { $_.SID.Value -notlike "S-1-5-32-*" }
+$groupLines = New-Object System.Collections.Generic.List[string]
+foreach ($g in $customGroups) {
+    $groupLines.Add("    `"$($g.Name)`"")
+}
+
+$accountLines = New-Object System.Collections.Generic.List[string]
+foreach ($u in (Get-LocalUser | Where-Object { $builtinNames -notcontains $_.Name -and $_.Enabled })) {
     $memberOf = @()
     foreach ($grp in Get-LocalGroup) {
         try {
@@ -91,12 +101,24 @@ foreach ($u in (Get-LocalUser | Where-Object { $builtinNames -notcontains $_.Nam
             if ($isMember) { $memberOf += $grp.Name }
         } catch { }
     }
-    $groupsJoined = $memberOf -join ';'
-    $draftLines.Add("$Hostname,$($u.Name),$($u.Enabled),$groupsJoined")
+    $groupsFormatted = ($memberOf | ForEach-Object { "`"$_`"" }) -join ', '
+    $accountLines.Add("    @{ User = `"$($u.Name)`"; Groups = @($groupsFormatted) }")
 }
-$draftLines | Out-File -FilePath $AccountsDraft -Encoding UTF8
-Log-Warn "$AccountsDraft 에는 비밀번호를 포함하지 않았습니다. TO-BE 계정 생성 시 새 임시 비밀번호를 별도로 발급하세요."
-Log-Success "계정/그룹 수집 완료: $AccountsDraft (원본: accounts_raw.txt)"
+
+$draftContent = New-Object System.Collections.Generic.List[string]
+$draftContent.Add("# os-setup/windows/config/os_env/$Hostname.ps1 에 그대로 붙여넣을 draft")
+$draftContent.Add("# 비밀번호는 포함하지 않음 - Account-Gen.ps1이 임시 비밀번호를 자동 생성함")
+$draftContent.Add("`$HostGroups = @(")
+$draftContent.AddRange($groupLines)
+$draftContent.Add(")")
+$draftContent.Add("")
+$draftContent.Add("`$HostAccounts = @(")
+$draftContent.AddRange($accountLines)
+$draftContent.Add(")")
+$draftContent | Out-File -FilePath $AccountsEnvDraft -Encoding UTF8
+
+Log-Warn "$AccountsEnvDraft 에는 비밀번호를 포함하지 않았습니다. TO-BE 계정 생성 시 Account-Gen.ps1이 임시 비밀번호를 자동 생성합니다."
+Log-Success "계정/그룹 수집 완료: $AccountsEnvDraft (원본: accounts_raw.txt)"
 
 # ==============================================================================
 # 2. OS 파라미터 / 예약 작업 등 서버 설정 값
@@ -219,5 +241,5 @@ Log-Info " AS-IS 정보 수집 완료: $Hostname"
 Log-Info "  - 출력 디렉토리 : $HostOutDir"
 Log-Info "  - 압축 파일     : $ZipPath"
 Log-Info "=================================================="
-Log-Warn "draft 파일(accounts_gen_draft.csv, sw_mapping_draft.txt)은 초안입니다."
-Log-Warn "반드시 검토 후 os-setup-main 쪽 설정 파일에 반영하세요. 비밀번호는 포함되어 있지 않습니다."
+Log-Warn "draft 파일(accounts_gen_draft.ps1, sw_mapping_draft.txt)은 초안입니다."
+Log-Warn "반드시 검토 후 os-setup 쪽 설정 파일(config/os_env/, config/os_param_profiles/ 등)에 반영하세요. 비밀번호는 포함되어 있지 않습니다."
