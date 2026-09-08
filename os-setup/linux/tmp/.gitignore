@@ -1,6 +1,0 @@
-# 이 디렉터리는 실행 시점에 tmp/<hostname>/ 아래로 자동 생성/누적된다
-# (config/common.env의 manifest_dir 등 함수 참고). rollback을 위한 "실제로
-# 생성한 것" 기록/백업 파일이라 서버별 실행 상태이므로 git에는 올리지 않는다.
-*
-!.gitignore
-!.gitkeep
