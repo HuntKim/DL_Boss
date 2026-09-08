@@ -1,68 +1,39 @@
-# os-setup
-- 2026 종량제 내재화 OS Setup 스크립트 저장소
+MES Cloud OS 운영 체계
+작성자: 서지연 / Cloud Solution그룹(AX/PI센터), 마지막 업데이트: 1분 전  1분 읽기
 
-### Target OS
-- RHEL 8.6, RHEL 8.10, RHEL 9.2, Windows 2022
 
-### 디렉토리 구조
-```
-/os-setup/
-  ├── scripts/                                    # 스크립트 및 설정 영역
-  │   ├── linux/                                  # [Linux 영역]
-  │   │   ├── config/                             # 전역 및 호스트별 설정 파일
-  │   │   │   ├── Linux_user_gen.csv              # 계정 생성 정보
-  │   │   │   ├── Linux_filesystem_gen.csv        # 파일시스템/마운트 정보
-  │   │   │   ├── os_param_applly.csv             # OS 파라미터 설정 정보
-  │   │   │   ├── sw_mapping_linux.txt            # Linux 서버별 SW 매핑 정보
-  │   │   │   ├── linux_common.env                # 전역 기본값 및 공통 로그 함수
-  │   │   │   ├── env/                            # [호스트별 개별 환경 설정]
-  │   │   │   │   └── host1.env                   # 특정 호스트 전용 설정
-  │   │   │   └── tnsnames/                       # [호스트별 oracle client용 tnsnames.ora 설정]
-  │   │   │       └── host1.tnsnames.ora          # 특정 호스트 전용 설정
-  │   │   ├── init.sh                             # OS Setup 파일 및 구조 자동 배포 스크립트 
-  │   │   ├── account/                            # [계정 관리]
-  │   │   │   ├── Linux_user_gen.sh               # 계정 생성 스크립트
-  │   │   │   ├── Linux_user_rollback.sh          # 계정 생성 롤백 스크립트
-  │   │   │   └── Linux_user_verify.sh            # 계정 생성 검증 스크립트
-  │   │   ├── file-system/                        # [파일시스템 관리]
-  │   │   │   ├── Linux_filesystem_gen.sh         # 마운트/디스크 설정 스크립트
-  │   │   │   ├── Linux_filesystem_rollback.sh    # 마운트/디스크 설정 롤백 스크립트
-  │   │   │   └── Linux_filesystem_verify.sh      # 마운트/디스크 설정 검증 스크립트
-  │   │   ├── os-parameter/                       # [OS 파라미터 설정]
-  │   │   │   ├── os_param_apply.sh               # OS 파라미터 설정 스크립트
-  │   │   │   ├── os_param_rollback.sh            # OS 파라미터 설정 롤백 스크립트
-  │   │   │   └── os_param_verify.sh              # OS 파라미터 설정 검증 스크립트
-  │   │   ├── monitoring/                         # [COTS 모니터링 설정]
-  │   │   │   └── setup_monitoring.sh             # exporter, collector 설정 스크립트
-  │   │   └── sw_modules/                         # [SW 자동 설치]
-  │   │       ├── setup_sw.sh                     # [메인] SW 설치 제어 스크립트
-  │   │       ├── install_python.sh               # Python 설치 모듈
-  │   │       └── ... (기타 모듈)
-  │   │
-  │   └── windows/                                # [Windows 영역]
-  │       ├── config/                             # 전역 및 호스트별 설정 파일
-  │       │   ├── windows_user_gen.csv            # 계정 생성 정보
-  │       │   ├── sw_mapping_windows.txt          # Windows 서버별 SW 매핑 정보
-  │       │   ├── windows_common.ps1              # 전역 기본값 및 공통 로그 함수
-  │       │   └── env/                            # [호스트별 개별 환경 설정]
-  │       │       └── host3.ps1                   # 특정 호스트 전용 설정
-  │       ├── init.ps1                            # OS Setup 파일 및 구조 자동 배포 스크립트 
-  │       ├── account/                            # [계정 관리]
-  │       │   ├── windows_user_gen.ps1            # 계정 생성 스크립트
-  │       │   ├── windows_user_rollback.ps1       # 계정 생성 롤백 스크립트
-  │       │   └── windows_user_verify.ps1         # 계정 생성 검증 스크립트
-  │       ├── monitoring/                         # [COTS 모니터링 설정]
-  │       │   └── setup_monitoring.ps1            # exporter, collector 설정 스크립트
-  │       └── sw_modules/                         # [SW 자동 설치]
-  │           ├── setup_sw.ps1                    # [메인] SW 설치 제어 스크립트
-  │           ├── install_jdk.ps1                 # JDK 설치 모듈
-  │           └── ... (기타 모듈)
-  │
-  └── files/                                      # 설치 파일 저장 영역 (sw_mapping.txt에 기재될 sw-version과 동일한 디렉토리로 생성)
-      ├── linux/                                  # Linux용 설치 바이너리/압축파일
-      │   ├── python_3.10.9_32b/
-      │   └── python_3.10.9_64b/
-      └── windows/                                # Windows용 설치 바이너리/압축파일
-          ├── sw_version_32b/
-          └── sw_version_64b/
-```
+Contents
+
+
+1. 개요
+2. 모니터링
+2.1 BBT 등급 분류 체계
+2.2 BBT 등급 분류 체계
+3. 장애 대응 프로세스
+
+
+1. 개요
+기존 종량제로 운영하던 MES 서버를 내재화함에 따라 변경되는 MES Cloud OS 운영 체계 수립 필요
+
+
+2. 모니터링
+MES Cloud 개발/재연/운영 모두 OnTune으로 기존과 동일하게 운영 시행
+OnTune → BBT로는 OS 관련 로그와 아래 Critical 키워드를 포함한 로그만 전송됨.
+민정님이 사전에 정의해놓은 자료 검토 후 해당 내용 추가 예정
+2.1 BBT 등급 분류 체계
+BBT는 기존과 동일하게 A/B/C/D 등급으로 분류됨. 
+동보는 A/B 등급만 발송 예정
+BBT 등급 분류 상세 내용 → 추가 필요 (기준 등)
+MES 운영 Level 중 생산에 영향이 가는 M0 ~ M1만 A/B 등급이며 나머지는 C/D 등급으로 분류됨.
+2.2 BBT 등급 분류 체계
+BBT는 기존과 동일하게 A/B/C/D 등급으로 분류됨. 
+동보는 A/B 등급만 발송 예정
+BBT 등급 분류 상세 내용 → 추가 필요 (기준 등)
+MES 운영 Level 중 생상에 영향이 가는 M0 ~ M1만 A/B 등급이며 나머지는 C/D 등급으로 분류됨.
+
+
+3. 장애 대응 프로세스
+장애 발생 시 아래 프로세스로 진행 예정 → 추가/수정 필요 (MES와 미팅 통해 기존 프로세스 참고하여 추가)
+         (1) 동보 통해 장애 발생 인지
+
+         (2) MES 장애 대응 메신저 창에 동보 및 장애 발생 내용 공유
