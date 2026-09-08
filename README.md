@@ -1,6 +1,4 @@
 MES Cloud OS 운영 체계
-작성자: 서지연 / Cloud Solution그룹(AX/PI센터), 마지막 업데이트: 1분 전  1분 읽기
-
 
 Contents
 
