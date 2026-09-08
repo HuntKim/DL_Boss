@@ -19,11 +19,23 @@ Contents
     동보는 A/B 등급만 발송 예정
     BBT 등급 분류 상세 내용 → 추가 필요 (기준 등)
     MES 운영 Level 중 생산에 영향이 가는 M0 ~ M1만 A/B 등급이며 나머지는 C/D 등급으로 분류됨.
-  2.2 BBT 등급 분류 체계
-    BBT는 기존과 동일하게 A/B/C/D 등급으로 분류됨. 
-    동보는 A/B 등급만 발송 예정
-    BBT 등급 분류 상세 내용 → 추가 필요 (기준 등)
-    MES 운영 Level 중 생상에 영향이 가는 M0 ~ M1만 A/B 등급이며 나머지는 C/D 등급으로 분류됨.
+    
+		* MES 운영 Level
+			 MES 운영 Level 현황
+          - M0 :  장애 시 Fullauto 생산에 즉시 영향 받는 FAB 생산/제어 시스템
+          - M1 : Fullauto 생산에 점차적으로 영향 받는 설비/품질 분석 시스템
+          - M2 : 생산에 영향 없는 설비/품질 분석 시스템
+          - M3 : 생산에 영향 없는 EHS 및 공통 서비스 시스템
+          - M4 : 개발/재연/Staging
+          | MES 운영 Level | 업무 특성 | 생산 영향도(Fullauto 중단) |업무영역 |데이터백업 |대상 Application |
+          |:---:|:---:|:---:|:---:|:---:|:---:|
+          |M0|FAB 생산/제어|즉시(Immediately)|라인망|필요|WorkMan, RulePkg, APC, SPC, Dispatcher, RMS, TC, FDC (생산) MCS, MCP, OCS, ACS, FLECS (물류)|
+          |M1|설비/품질 분석|점차적(Gradually)|공용망|필요|GPM, 제조W/P, FP, Scheduler, Simulater, MSGEAI, EES Photo, Infra EES, MACS, IMC, MBP, PEMS,  AR, YMS, SSQS, FPA, EDA IF, PCS|
+          |M2|설비/품질 분석|영향 없음|공용망|필요|AIMS, c-TTTM, DSS, eEDS, EES UI, FLS, IDPS, MBP, IQMS, i-TTTM, MATS, MEDIP, MESSI, MPMC Portal, MWP, SAVE, SELTA, SingleSpec, Smart Interlock, SMAS, SSPS, TPSS, YENPIS, 생산 EAI, 설비 EAI, 표준SPEC, EQMS, Data Extract
+          |M3|EHS 및 공통 서비스|영향 없음|공용망|필요|ARIAS, CCTV, Drone, DS EHS, FITS, iGPM, POLARIS, RC, SGREMS (Smart Glass), SMAP, SMCS, SREAMS, SREP/SREP PKG, TAPS, TMS, WMS, YMS_LotTrace, 생산이상감지, 스마트 생산 IoT 플랫폼, EHS W/P, AMHSSIM, PBTS, TMM|
+          |M4|개발/재연/Staging|영향 없음|공용망|필요|MES 시스템|
+          |인프라 폐쇄망|인프라 폐쇄망|점차적 (Gradually) & 영향없음|인프라 폐쇄망|필요|M1 : GCS, FMCS M3 : SMCS, CCTV|
+
 3. 장애 대응 프로세스
   * 장애 발생 시 아래 프로세스로 진행 예정 → 추가/수정 필요 (MES와 미팅 통해 기존 프로세스 참고하여 추가)
     (1) 동보 통해 장애 발생 인지
