@@ -1,0 +1,24 @@
+영역	모니터링 Metric	통합 임계치	메트릭 유형	OS 적용범위	알람 등급	비고
+가용성	Host Alive	3~5분 응답 없음	완전장애형	전체	C	최우선
+CPU	CPU Usage	>= 80% 15분	성능저하형	전체	C	순간 Spike 제외
+CPU	Load Average (Linux)	CPU Core x 1.0 초과 15분	성능저하형	Linux	D	Linux
+Memory	Memory Usage	>= 85% 15분	성능저하형	전체	C	Available 기준 권장
+Memory	Available Memory	< 15%	성능저하형	전체	C	Windows/Linux
+Swap	Swap Usage	>= 70%	성능저하형	전체	D	사용률만 보지 않음
+Paging	Page/Swap Activity	평시 대비 지속 증가	성능저하형	전체	D	성능 영향
+Filesystem	Disk Usage	>= 80%	성능저하형	전체	C	/, C: 중요
+Filesystem	Inode Usage	>= 80%	성능저하형	Linux	D	Linux
+Filesystem	Read Only	RO 전환	완전장애형	Linux	C	Linux
+Disk	Disk Latency	>= 20~30ms 지속	성능저하형	전체	D	스토리지별 보정
+Disk	I/O Error	Error 발생	성능저하형	전체	C	장애 징후
+Network	NIC Status	Link Down	완전장애형	전체	C	업무 NIC
+Network	Packet Loss	>= 5% 지속	성능저하형	전체	D	네트워크 영향
+Network	Interface Utilization	>= 80%	성능저하형	전체	D	대역폭 포화
+Network	Network Error/Drop	지속 증가	성능저하형	전체	D	NIC/Network 점검
+Process	Critical Process	Process Down	완전장애형	전체	C	대상 지정 필요
+Service	Service Status	Service Stop	완전장애형	전체	C	systemd/Windows Service
+OS	Kernel Panic	발생	완전장애형	Linux	C	Linux
+OS	BSOD/BugCheck	발생	완전장애형	Windows	C	Windows
+OS	Filesystem Error	Error 발생	성능저하형	전체	C	NTFS/ext/xfs 등
+OS	System Reboot	비계획 Reboot	성능저하형	전체	C	계획 작업 제외
+Time	NTP Offset	> 30 sec	성능저하형	전체	C	환경에 맞게 조정
