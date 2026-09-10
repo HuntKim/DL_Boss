@@ -1,3 +1,5 @@
+운영Level	환경	서버구분	OS	DBMS	영역	모니터링 Metric	통합 임계치	알람등급	비고
+
 M4	재연	AP	RHEL 8.10	-	가용성	Host Alive	3~5분 응답 없음	C	M2/M3/M4는 등급 C/D만 사용
 M4	재연	AP	RHEL 8.10	-	CPU	CPU Usage	>= 80% 15분	C	M2/M3/M4는 등급 C/D만 사용
 M4	재연	AP	RHEL 8.10	-	CPU	Load Average (Linux)	CPU Core x 1.0 초과 15분	D	M2/M3/M4는 등급 C/D만 사용
@@ -20,3 +22,24 @@ M4	재연	AP	RHEL 8.10	-	OS	Kernel Panic	발생	C	M2/M3/M4는 등급 C/D만 사�
 M4	재연	AP	RHEL 8.10	-	OS	Filesystem Error	Error 발생	C	M2/M3/M4는 등급 C/D만 사용
 M4	재연	AP	RHEL 8.10	-	OS	System Reboot	비계획 Reboot	C	M2/M3/M4는 등급 C/D만 사용
 M4	재연	AP	RHEL 8.10	-	Time	NTP Offset	> 30 sec	C	M2/M3/M4는 등급 C/D만 사용
+
+
+M4	재연	AP	WINDOWS 2022	-	가용성	Host Alive	3~5분 응답 없음	C	M2/M3/M4는 등급 C/D만 사용
+M4	재연	AP	WINDOWS 2022	-	CPU	CPU Usage	>= 80% 15분	C	M2/M3/M4는 등급 C/D만 사용
+M4	재연	AP	WINDOWS 2022	-	Memory	Memory Usage	>= 85% 15분	C	M2/M3/M4는 등급 C/D만 사용
+M4	재연	AP	WINDOWS 2022	-	Memory	Available Memory	< 15%	C	M2/M3/M4는 등급 C/D만 사용
+M4	재연	AP	WINDOWS 2022	-	Swap	Swap Usage	>= 70%	D	M2/M3/M4는 등급 C/D만 사용
+M4	재연	AP	WINDOWS 2022	-	Paging	Page/Swap Activity	평시 대비 지속 증가	D	M2/M3/M4는 등급 C/D만 사용
+M4	재연	AP	WINDOWS 2022	-	Filesystem	Disk Usage	>= 80%	C	M2/M3/M4는 등급 C/D만 사용
+M4	재연	AP	WINDOWS 2022	-	Disk	Disk Latency	>= 20~30ms 지속	D	M2/M3/M4는 등급 C/D만 사용
+M4	재연	AP	WINDOWS 2022	-	Disk	I/O Error	Error 발생	C	M2/M3/M4는 등급 C/D만 사용
+M4	재연	AP	WINDOWS 2022	-	Network	NIC Status	Link Down	C	M2/M3/M4는 등급 C/D만 사용
+M4	재연	AP	WINDOWS 2022	-	Network	Packet Loss	>= 5% 지속	D	M2/M3/M4는 등급 C/D만 사용
+M4	재연	AP	WINDOWS 2022	-	Network	Interface Utilization	>= 80%	D	M2/M3/M4는 등급 C/D만 사용
+M4	재연	AP	WINDOWS 2022	-	Network	Network Error/Drop	지속 증가	D	M2/M3/M4는 등급 C/D만 사용
+M4	재연	AP	WINDOWS 2022	-	Process	Critical Process	Process Down	C	M2/M3/M4는 등급 C/D만 사용
+M4	재연	AP	WINDOWS 2022	-	Service	Service Status	Service Stop	C	M2/M3/M4는 등급 C/D만 사용
+M4	재연	AP	WINDOWS 2022	-	OS	BSOD/BugCheck	발생	C	M2/M3/M4는 등급 C/D만 사용
+M4	재연	AP	WINDOWS 2022	-	OS	Filesystem Error	Error 발생	C	M2/M3/M4는 등급 C/D만 사용
+M4	재연	AP	WINDOWS 2022	-	OS	System Reboot	비계획 Reboot	C	M2/M3/M4는 등급 C/D만 사용
+M4	재연	AP	WINDOWS 2022	-	Time	NTP Offset	> 30 sec	C	M2/M3/M4는 등급 C/D만 사용
