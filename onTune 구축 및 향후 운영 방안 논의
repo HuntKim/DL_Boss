@@ -1,0 +1,210 @@
+onTune 구축 및 향후 운영 방안 논의
+
+- 모든 OS 인프라 메시지 BBT 전송 예정임 (온튠에서 별도 레벨 나누지 않고 모든 메시지 BBT 등급으로 받을 수 있도록 / 특정 파일 내 로그 메시지 및 일반 인프라 메트릭)
+
+- COTS 담당자분들께서 SRE담당자분들께 운영을 위한 BBT 등 메시지 관련 교육 및 Q&A 세션 요청 (BBT은 모두 대응하고 A/B만 문자로 보낸다는지 등등)
+
+- COTS 담당자분들께 BBT 기준 등급 작성한 내역 공유
+
+- COTS 담당자분들께서 해당 내역 MSP와 함께 검토 후 확정 : 초기 내역으로 향후 운영하면서 상황에 맞도록 고도화 해나가야 함 (SRE도 과도기 인지하고 있음)
+
+- onTune구축/COTS담당자/SRE담당자 함께 모니터링 메시지 관련 초기 내용 공유 및 협의  
+
+
+
+
+
+========================================================== Original ==========================================================
+
+지난 번 onTune 진행사항에 대해 간략히 설명드렸고, 이번에는 셋업 진행 사항과 연계 부분 관련해 향후 운영을 어떻게 해야할 지 협의
+
+협의된 내역을 바탕으로 초기 셋팅 진행 예정임
+
+
+
+1. 현황 공유 
+SRE와 협의 : 운영 전환(11월) 전까지 BBT까지 연계해서 메시지 받아야 함
+
+발주 진행 중
+업체 정보 및 입고일 확인 필요 : 구매 확인 대기 중 / 입고일 지정 논의 필요(계약사)
+인력 투입 가능일 확인 필요 : 계약 즉시 가능하다고 함(제조사)
+셋업 진행 전
+수집 서버 자원 확보 진행 중 (LB / VM) : VM(M3)은 9월 4째주 할당 가능, LB신청도 VM IP받은 이후 진행 가능(IP추후발급)
+수집 서버 이중화 구성 필요 : 9월 4주차 이후 차주 월요일 제조사 미팅 예정
+수집 서버 셋업 필요 : 9월 4주차 이후
+클라이언트 서버 온튠 설치 필요 : 계약되면 라이선스 받아서 미리 셋업 가능
+유관 시스템 연계
+BBT 커스터마이징 및 연동 : 계약 즉시 진행 예정임
+Splunk 연동 : 우선순위 뒤로
+전환 대상 초기 메트릭 셋팅
+기본 적용 메트릭
+로그 모니터링
+운영 전환
+인프라 운영자 교육 
+사용자 가이드 문서 배포
+운영 이관
+
+
+
+
+2. 공유/논의 필요 사항 
+초기 메트릭 셋팅 관련 논의 필요
+배경 : SDS 필터링 기준 노하우 부재
+
+
+3번까지 진행 예정 : BBT DB 테이블 인입 시 불발통으로 인터페이스 됨
+
+                              onTune에서 발생하는 데이터 타입과 BBT DB에 인입되는 타입이 달라서 onTune 커스터마이징을 통해 1:1 맵핑이 필요한 상황
+
+논의 필요 사항 1 : 운영 담당자들이 onTune을 같이 볼 것인지 말 것인지(참고용), 아니면 BBT 메시지만 수신할 것인지
+
+                         onTune에는 알람 발생 시 보여지는 메시지 레벨이 5개로 분류됨 (Critical~Info까지) : 일반적인 모니터링 방법으로 등급 별 더 세분화해서 볼 수 있고 선제적으로 대응이 가능함 / 서버 임계치 중심의 모니터링
+
+                         그러나 BBT에는 메시지 등급이 4개로만 분류됨 : 세부 지표별 중심의 모니터링은 아님(운영 등급과 모니터링 중요도를 조합한 기준임) / 서비스 영향도 중심의 모니터링 
+
+여기를 클릭하여 펼치기...
+onTune 등급
+
+
+
+예시) 서버 별 Level1은 Server Down, Ping Fail 등등 / Level2는 CPU>90% / Level3은 CPU>80% 등등 세밀한 모니터링 가능 → 서버 별 현황을 한눈에 알 수 있음
+
+         But, 동보 위해서는 이런 데이터를 가지고 BBT 등급으로 변환해야 함
+
+
+
+BBT 등급 
+
+알림 등급	영향도	긴급도
+A급	전체 서비스/라인 영향	30분 이내 조치 필요
+B급	일부 서비스/라인 영향	30분 이내 조치 필요
+C급	전체에 잠재적 영향	긴급하지 않음
+D급	일부에 잠재적 영향	긴급하지 않음
+
+
+예시) Server Down, Ping Fail이라도 어떤 알림 등급으로 갈지 운영해보지 않은 입장에서는 기준을 명확하게 정의할 수 없음 → 해당 서버가 전체에 영향을 미치는지, 일부에 영향을 미치는지 알 수 없기 때문
+
+
+
+→ onTune을 보지 않고 BBT 발생 기준만으로 모니터링을 할 경우 onTune은 그냥 Level별로 나누지 않고 바로 서버 등급 별/메시지 타입 별 조합해서 BBT으로 보내면 됨
+
+     그러나 이 경우 세부 지표 확인 불가 Disk 80, 90, 100 이렇게 갈때까지 장애만 발생하지 않으면 알림등급은 없음.
+
+→ 일반적으로 장애가 발생하기 전에 먼저 조치를 하고자 단계적 모니터링을 하는데, BBT 메시지만 본다면 사전 예방이 상대적으로 어려움
+
+
+wp_Sys_Bad_if 이력 확인
+
+→ OS 레벨의 메시지와 하드웨어(BM) 의 메시지 등 여러 경로에서 온 메시지 혼합 발생
+
+ 
+1. 하드웨어 결함	Machine check events logged
+Uncorrectable Machine Check Exception
+Hardware event	매우 높음	CPU 캐시, 메모리, 메인보드 등 물리적 부품의 수명 도달 또는 고장. 서버 다운 및 데이터 손실 위험이 매우 높음.
+2. 스토리지 장애	DPE Disk X has failed
+critical medium error
+I/O error
+No spare disks	높음	물리적 디스크 파손, 섹터 불량. RAID 재구성 불가 (Spare 부족) 상태로 데이터 유실 위험 존재.
+3. 네트워크/SAN 단절	NIC Link is Down
+CISCO_SAN_LINKDOWN_EVENT
+Node X Failed to establish link	높음	광케이블/트랜시버 불량, 스위치 포트 오류, 스토리지 노드 인터페이스 카드 고장. 스토리지 접근 불가로 서비스 중단 발생.
+4. 세션 관리 충돌	Failed to start session scope
+Transaction ... is destructive
+systemd-logind ... core-dump	매우 높음	사용자 로그인 시 세션 종료/시작 작업 충돌. OS 레벨의 버그로 추정되며, 로그인 실패 및 세션 불안정 초래.
+5. 페일오버/모니터링	fence_ipmilan ... Failed
+ONTUNE_AGENT_TIMEOUT
+crmd ... Timed Out	중간	IPMI 통신 두절로 인한 펜싱 (장애 격리) 실패. 모니터링 에이전트 응답 없음으로 장애 감지 지연 가능성.
+6. 보안 인증 실패	Authentication failed from 12.30.44.13
+Login failure attempt via SSH	중간	특정 IP(12.30.44.13 등) 에서의 반복적인 SSH 로그인 시도.
+7. 파일시스템/앱 오류	stale file system
+no space left on device
+Failed to create container	낮음	NFS 마운트 끊김, 디스크 용량 부족, 컨테이너 생성 실패 등 응용 계층 문제.
+→ BM메시지를 제외하고 OS 레벨의 메시지만 보았을 때 일반적인 모니터링 메트릭인 filesystem/memory/cpu utilization 등은 없으며, 주로 OS Kernel 레벨에서 감지하여 /var/log/messages 등에 기록한 메시지임
+
+→ 원본 데이터에는 df, free, top 같은 명령어로 확인하는 정량적인 성능 지표는 포함되어 있지 않음 / 사건이 발생했을 때 시스템이 남긴 Log Event 위주임
+
+
+
+여기를 클릭하여 펼치기...
+
+ 	
+ 	
+ 
+성격	사건 기록 (무언가 잘못되었을 때 남는 로그)	상태 수치 (일정 주기로 측정하는 데이터) → 들어가서 볼 수는 있지만 BBT 알람으로 띄우지는 않음
+예시	- Machine check events logged (하드웨어 오류 발생)
+- Disk ... has failed (디스크 고장 선언)
+- Link is Down (네트워크 끊김)
+- Authentication failed (로그인 실패)
+- No space left on device (용량 부족)	- CPU Usage: 85%
+- Memory Free: 2GB
+- Disk Usage: 72%
+- Network Throughput: 1Gbps
+- IOPS: 5000
+특징	- 임계치 초과 시점에만 로그가 찍힘
+- "무엇이 고장 났는지" 알 수 있음
+- 과거 이력 추적용	- 지속적인 추이를 볼 수 있음
+- "언제부터 안 좋아지기 시작했는지" 알 수 있음
+- 용량 계획 (Capacity Planning) 용
+원본 데이터 위치	/var/log/messages 등	top, vmstat, iostat, df, free, Performance Counter
+
+
+
+
+논의 필요 사항 2 : 지금 할 수 있는 것
+
+1. 현재 BBT 예시와 같이 OS /var/log/messages, /var/log/secure, Windows Event Log 등에서 아래 내역을 키워드로 등록
+
+Critical, Fatal, Emergency, Panic
+I/O error, Sector, Medium Error, Drive Failed, SMART Critical Warning
+Link Down, Timeout, Connnection refused, Network unreachable
+No space left on device, Out of memory, OOM Killer, Pool exhauseted, BOSD(Windows)
+Authentication failure, Invalid user, Access denied, Permission denied
+Memory	OOM Killer	-	발생	Linux	/var/log/messages 또는 Kernel Journal	Out of memory, oom-kill, Killed process
+OS	Kernel Panic	-	발생	Linux	Kernel Journal / Console / Crash Log	Kernel panic, not syncing
+Disk	Disk I/O Error	1회 발생	반복 발생/서비스 영향	Linux	/var/log/messages 또는 Kernel Journal	I/O error, Buffer I/O error, blk_update_request
+Filesystem	EXT4 Error	발생	반복/서비스 영향	Linux	/var/log/messages 또는 Kernel Journal	EXT4-fs error
+Filesystem	XFS Error	발생	반복/서비스 영향	Linux	/var/log/messages 또는 Kernel Journal	XFS + error, Corruption
+Filesystem	Read Only 전환	-	발생	Linux	/var/log/messages 또는 Kernel Journal	Remounting filesystem read-only, read-only file system
+Network	NIC Link Down	-	발생	Linux	/var/log/messages 또는 Kernel Journal	Link is Down, NIC Link is Down
+Time	NTP/chrony Error	일시적 오류	지속적인 동기화 실패	Linux	chronyd Journal	chronyd의 sync/source 관련 Error
+OS	BSOD / BugCheck	-	발생	Windows	Windows Logs → System	Provider BugCheck, Event ID 1001
+OS	Unexpected Shutdown	-	발생	Windows	Windows Logs → System	Event ID 6008
+OS	Unexpected Restart	-	발생	Windows	Windows Logs → System	Provider Kernel-Power, Event ID 41
+Disk	Disk Error	Error 발생	반복/서비스 영향	Windows	Windows Logs → System	Provider Disk + Error/Critical
+Disk	Storage Error	Error 발생	반복/서비스 영향	Windows	Windows Logs → System	Provider Storport, stornvme 등
+Filesystem	NTFS Error	Error 발생	반복/서비스 영향	Windows	Windows Logs → System	Provider Ntfs + Error/Critical
+Filesystem	ReFS Error	Error 발생	반복/서비스 영향	Windows	Windows Logs → System	Provider ReFS + Error/Critical
+Time	Windows Time Error	일시 오류	지속적인 동기화 실패	Windows	Time-Service → Operational / System	Provider Microsoft-Windows-Time-Service
+→ 이런 메시지 확인하고서 OS 상황실 담당자들이 어떤 조치를 해야 하는지 역량 확보 필요
+
+
+
+2. 현재 BBT 으로 가지는 않지만 아래 내역 메트릭 적용 필요 (BBT까지 갈지, 온튠에서 자체처리할 지는 논의 대상)
+
+가용성	Host Alive	-	3~5분 응답 없음	ICMP Ping / Agent Heartbeat	ICMP Ping / Agent Heartbeat	Active Check
+CPU	CPU Usage	≥ 80% 15분	≥ 95% 10분	/proc/stat → CPU Usage	\Processor(_Total)\% Processor Time	순간 Spike 제외
+CPU	Load Average	Core × 1.0 초과 15분	Core × 2.0 초과 10분	/proc/loadavg → 1/5/15분 Load	-	Linux
+Memory	Memory Usage	≥ 85% 15분	≥ 95% 10분	(MemTotal-MemAvailable) / MemTotal × 100	Memory Counter	Available 기준 권장
+Memory	Available Memory	< 15%	< 5% 10분	/proc/meminfo → MemAvailable	\Memory\Available MBytes	여유 메모리
+Swap	Swap Usage	≥ 70%	≥ 90% + Paging 지속	(SwapTotal-SwapFree) / SwapTotal × 100	\Paging File(_Total)\% Usage	단독 판단 지양
+Paging	Swap/Page Activity	평시 대비 지속 증가	과도한 Paging 지속	/proc/vmstat → pswpin, pswpout 또는 vmstat → si, so	\Memory\Pages/sec 등	Swap Usage와 함께 판단
+Filesystem	Disk Usage	≥ 80%	≥ 95%	df -P → Use%	\LogicalDisk(*)\% Free Space	/, C: 등 중요 FS
+Filesystem	Inode Usage	≥ 80%	≥ 95%	df -i → IUse%	-	Linux
+Filesystem	Read Only 상태	-	RO 전환	/proc/mounts → ro option	-	Linux
+Disk	Read Latency	≥ 20~30ms 지속	≥ 50ms 지속	iostat -x → r_await	\PhysicalDisk(*)\Avg. Disk sec/Read	스토리지별 보정
+Disk	Write Latency	≥ 20~30ms 지속	≥ 50ms 지속	iostat -x → w_await	\PhysicalDisk(*)\Avg. Disk sec/Write	스토리지별 보정
+Disk	Disk Utilization	≥ 80% 지속	≥ 95% 지속	iostat -x → %util	\PhysicalDisk(*)\% Disk Time	Latency와 함께 판단
+Network	NIC Status	-	업무 NIC Link Down	/sys/class/net/<NIC>/operstate	Network Adapter 상태	UP/DOWN
+Network	Packet Loss	≥ 5% 지속	≥ 20% 지속	ICMP Ping Loss %	ICMP Ping Loss %	Active Check
+Network	Interface Utilization	≥ 80%	≥ 95%	/proc/net/dev RX/TX bytes	\Network Interface(*)\Bytes Total/sec	NIC 대역폭 대비 계산
+Network	RX/TX Error	지속 증가	급격한 증가/통신 영향	/proc/net/dev → rx_errors, tx_errors	Packets Received/Outbound Errors	증가량으로 판단
+Network	Packet Drop	지속 증가	급격한 증가/통신 영향	rx_dropped, tx_dropped	Packets Received Discarded 등	증가량으로 판단
+Process	Critical Process	-	Process Count = 0	pgrep, Process Count	Process Count	대상 Process 사전 지정
+Service	Service Status	-	Stop / Inactive	systemctl is-active	Windows Service State	대상 Service 지정
+OS	System Uptime	-	비계획 Reboot 감지	/proc/uptime	\System\System Up Time	값 Reset 감지
+Time	NTP Offset	> 30초	> 5분	chronyc tracking → System time/offset	w32tm Offset	절대값 기준
+Time	NTP Sync Status	-	Not synchronized	chronyc tracking → Leap status	W32Time 상태	Offset과 별도 감시
+Time	NTP Source 상태	일시 접근 실패	지속 접근 불가	chronyc sources	W32Time Source	NTP 서버 접근 상태
+Time	NTP Service	-	Service Down	systemctl is-active chronyd	W32Time Service	서비스 상태
+
+
