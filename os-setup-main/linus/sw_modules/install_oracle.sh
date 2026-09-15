@@ -367,8 +367,14 @@ cd "${ORACLE_HOME}" || exit 1
 echo "CV_ASSUME_DISTID = ${OEL_VALUE}"
 export CV_ASSUME_DISTID=${OEL_VALUE}
 
+# ※ 기존 코드는 -ignoreSysPrereqs를 사용했는데, 이 플래그는 DB 설치
+#   컨텍스트(oracle.install.db)나 구버전 installer용이라 19c Client Setup
+#   컨텍스트에서는 "[INS-04009] 전달된 인수 [-ignoreSysPrereqs]은(는) 현재
+#   컨텍스트 ClientSetup에서 지원되지 않습니다"로 실패한다. runInstaller
+#   자체 usage 출력 기준으로 -silent 하위에서 지원하는 건 -ignorePrereqFailure
+#   뿐이라 이걸로 교체.
 CV_ASSUME_DISTID=${OEL_VALUE} ./runInstaller -silent \\
-  -ignoreSysPrereqs \\
+  -ignorePrereqFailure \\
   -responseFile ${ORACLE_HOME}/install/response/clientsetup.rsp \\
   oracle.install.option=INSTALL_DB_SWONLY \\
   oracle.install.client.installType=Administrator \\
