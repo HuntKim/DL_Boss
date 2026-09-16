@@ -76,7 +76,8 @@
      inventory_loc=/oracle/orainventory
      inst_group=dba
    - oracle 계정 `.bash_profile`에 `ORACLE_HOME`, `ORACLE_BASE`,
-     `TNS_ADMIN`, `LD_LIBRARY_PATH`, `PATH` 등 환경변수 추가
+     ```
+     TNS_ADMIN`, `LD_LIBRARY_PATH`, `PATH` 등 환경변수 추가
      export ORACLE_HOME=/oracle/CLIENT/oracle
      export ORACLE_BASE=/oracle/CLIENT
      export UNIX_GROUP_NAME=dba
@@ -84,23 +85,26 @@
      export TNS_ADMIN=$ORACLE_HOME/network/admin
      export LD_LIBRARY_PATH=$ORACLE_HOME/lib
      export PATH=$ORACLE_HOME/bin:$PATH
-     
+     ```
    - `/etc/ld.so.conf.d/oracle-client.conf` + `ldconfig` (root 등 다른 계정
      대응)
    - 대상 서버 전용 `tnsnames.ora`로 교체
 4. **참고**: 단순 복사만으로는 Oracle Inventory에 해당 호스트가 등록되지
    않아 이후 OPatch 패치 관리 시 문제될 수 있음 — 필요 시 `attachHome`
    절차 추가 검토
-   `
+   ```
     su - oracle
     cd /oracle/CLIENT/oracle
-    ./runInstaller -silent -attachHome \
+    CV_ASSUME_DISTID=OLE7.8 ./runInstaller -silent -attachHome \
     -invPtrLoc /etc/oraInst.loc \
     ORACLE_HOME=/oracle/CLIENT/oracle \
     ORACLE_HOME_NAME=OraCleient19Home1
-   `
+   ```
    [확인]
-   `$ORACLE_HOM/OPatch/opatch lsinventory`
+   ```
+   $ORACLE_HOM/OPatch/opatch lsinventory
+   /oracle/oraInventory/ContentsXML  //ORACLE HOME NAME이 지정되어 있는지 확인
+   ```
    위에서 등록한 HOME 경로/이름 확인
    
 ## 6. 기타
