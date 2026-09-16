@@ -95,15 +95,15 @@
    ```
     su - oracle
     cd /oracle/CLIENT/oracle
-    CV_ASSUME_DISTID=OLE7.8 ./runInstaller -silent -attachHome \
+    ./runInstaller -silent -attachHome \
     -invPtrLoc /etc/oraInst.loc \
     ORACLE_HOME=/oracle/CLIENT/oracle \
     ORACLE_HOME_NAME=OraCleient19Home1
    ```
    [확인]
    ```
-   $ORACLE_HOM/OPatch/opatch lsinventory
-   /oracle/oraInventory/ContentsXML  //ORACLE HOME NAME이 지정되어 있는지 확인
+   $ORACLE_HOME/OPatch/opatch lsinventory
+   /oracle/oraInventory/ContentsXML/inventory.xml  //ORACLE HOME NAME이 지정되어 있는지 확인
    ```
    위에서 등록한 HOME 경로/이름 확인
    
