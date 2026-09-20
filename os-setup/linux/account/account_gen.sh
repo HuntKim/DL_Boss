@@ -127,7 +127,16 @@ for entry in "${HOST_ACCOUNTS[@]}"; do
     log_success "계정 생성 완료: ${uname} (UID: ${uid}, 1차그룹: ${pgroup}, 홈: ${home}, 쉘: ${shell})"
     manifest_record "created_accounts.txt" "$uname"
 
-    if echo "${uname}:${HOST_INITIAL_PASSWORD}" | chpasswd; then
+    # osmanaged 계정만 공통 초기 비밀번호(HOST_INITIAL_PASSWORD) 대신
+    # 전용 비밀번호(HOST_OSMANAGED_PASSWORD)를 쓸 수 있다. 정의 안 된
+    # 호스트는 기존처럼 공통 값으로 폴백한다.
+    account_password="$HOST_INITIAL_PASSWORD"
+    if [ "$uname" = "osmanaged" ] && [ -n "${HOST_OSMANAGED_PASSWORD:-}" ]; then
+        account_password="$HOST_OSMANAGED_PASSWORD"
+        log_info "'osmanaged' 계정은 HOST_OSMANAGED_PASSWORD 값으로 초기 비밀번호를 설정합니다."
+    fi
+
+    if echo "${uname}:${account_password}" | chpasswd; then
         log_success "초기 비밀번호 설정 완료: ${uname}"
         created_accounts+=("$uname")
     else

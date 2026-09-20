@@ -1,0 +1,7 @@
+# 호스트별 실제 운영 설정 파일(계정 초기 비밀번호 등 평문 secret 포함)은
+# 절대 커밋하지 않는다. 과거 windows_user_gen.txt에 여러 호스트의 실제
+# 초기 비밀번호를 평문으로 커밋했다가 삭제한 사고(커밋 ecc0f9a)가 있었음.
+# 템플릿(*.template)만 추적 대상으로 남기고, 실제 값이 들어가는 파일은
+# 아래 패턴으로 제외한다.
+os-setup/linux/config/os_env/*.env
+os-setup/windows/config/os_env/*.ps1
