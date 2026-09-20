@@ -135,6 +135,15 @@ case "$OS_MAJOR" in
         TARGET_PKGS=("${RL9_ORA_PKG[@]}")
         OEL_VALUE="OL8"
         ;;
+    10)
+        # ※ 미검증: Oracle이 19c를 OL10/RHEL10에 공식 인증하지 않은 상태라
+        #   패키지 설치 이후 단계(runInstaller supportedOSCheck 등)에서
+        #   막힐 수 있음. RL10_ORA_PKG 자체도 RL9용 목록을 그대로 가져온
+        #   미검증 목록(linux_common.env 주석 참고).
+        log_info "감지된 OS: RHEL 10 계열 (${OS_VERSION})"
+        TARGET_PKGS=("${RL10_ORA_PKG[@]}")
+        OEL_VALUE="OEL10"
+        ;;
     *)
         log_error "지원하지 않는 OS 버전입니다: ${OS_VERSION} (메이저 버전: ${OS_MAJOR})"
         exit 1
