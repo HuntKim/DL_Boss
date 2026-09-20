@@ -11,6 +11,11 @@
 #         oracle 계정용 .bash_profile도 별도 파일로 다운로드하여
 #         /oracle/.bash_profile로 교체. Oracle Inventory 등록만
 #         -attachHome으로 별도 처리.
+#   ※ "복제"라고 해서 OS 필수 패키지 설치를 생략하면 안 됨 - 복사해온
+#     바이너리도 여전히 OS가 제공하는 공유 라이브러리(libaio, libnsl 등)에
+#     동적 링크돼 있고, 아래 attachHome 단계에서 runInstaller(OUI, Java
+#     기반)를 실제로 실행하기 때문에 install_oracle.sh와 동일한 필수
+#     패키지(RLn_ORA_PKG)가 그대로 필요하다.
 #
 # [사전 준비 - 운영자가 미리 해둘 것]
 #   RHEL 메이저 버전별 골든 서버에서 (예: RHEL8 골든 서버에서):
@@ -122,7 +127,69 @@ BASH_PROFILE_SRC="bash_profile_${OS_MAJOR}"
 log_info "사용할 골든 이미지: ${CLIENT_TAR}, ${INVENTORY_TAR}, ${BASH_PROFILE_SRC} (CV_ASSUME_DISTID=${OEL_VALUE})"
 
 # ==========================================================
-# 5. oracle 계정 존재 확인 (계정/그룹 생성 단계가 선행되어 있어야 함)
+# 5. 필수 dnf 패키지 설치 검증
+#    install_oracle.sh와 동일한 목록(RLn_ORA_PKG, linux_common.env)과
+#    동일한 재시도/개별 검증 로직을 그대로 재사용한다. 혹시 몰라 목록의
+#    패키지를 임의로 빼지 않고 전체를 그대로 설치/검증한다.
+# ==========================================================
+case "$OS_MAJOR" in
+    8)  TARGET_PKGS=("${RL8_ORA_PKG[@]}") ;;
+    9)  TARGET_PKGS=("${RL9_ORA_PKG[@]}") ;;
+    10) TARGET_PKGS=("${RL10_ORA_PKG[@]}") ;;
+esac
+log_info "#################### 필수 패키지 설치 대상 ####################"
+log_info "Repository 패키지 (${#TARGET_PKGS[@]}개): ${TARGET_PKGS[*]}"
+log_info "################################################################"
+
+MAX_RETRIES=3
+RETRY_COUNT=0
+YUM_SUCCESS=false
+
+while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
+    ((RETRY_COUNT++))
+    log_info "패키지 설치 시도 중... (${RETRY_COUNT}/${MAX_RETRIES})"
+
+    dnf install -y "${TARGET_PKGS[@]}"
+
+    if [ $? -eq 0 ]; then
+        log_info "dnf 패키지 설치 명령이 성공적으로 완료되었습니다."
+        YUM_SUCCESS=true
+        break
+    else
+        log_warn "dnf 패키지 설치 중 오류가 발생했습니다. (${RETRY_COUNT}/${MAX_RETRIES})"
+        if [ $RETRY_COUNT -lt $MAX_RETRIES ]; then
+            log_info "5초 후 재시도합니다..."
+            sleep 5
+        fi
+    fi
+done
+
+if [ "$YUM_SUCCESS" = false ]; then
+    log_warn "${MAX_RETRIES}회 재시도 후에도 dnf install 명령어 실행 중 일부 에러가 발생했습니다."
+    log_warn "실제 필수 패키지 개별 설치 상태 검증 단계로 넘어갑니다."
+fi
+
+# 패키지 개별 검증 (rpm -q) - 목록 전체를 하나도 빼지 않고 검증한다.
+MISSING_PACKAGES=()
+for pkg in "${TARGET_PKGS[@]}"; do
+    if rpm -q "$pkg" &>/dev/null; then
+        log_info " [OK] 패키지 설치됨: $pkg"
+    else
+        log_error " [FAIL] 패키지 미설치: $pkg"
+        MISSING_PACKAGES+=("$pkg")
+    fi
+done
+
+if [ ${#MISSING_PACKAGES[@]} -ne 0 ]; then
+    log_error "다음 필수 패키지가 최종적으로 설치되지 않았습니다: ${MISSING_PACKAGES[*]}"
+    log_error "패키지 설치 실패로 인해 오라클 클라이언트 설치 스크립트를 중단합니다."
+    exit 1
+else
+    log_success "모든 필수 패키지가 성공적으로 설치 및 검증되었습니다."
+fi
+
+# ==========================================================
+# 6. oracle 계정 존재 확인 (계정/그룹 생성 단계가 선행되어 있어야 함)
 # ==========================================================
 if ! id oracle >/dev/null 2>&1; then
     log_error "oracle 계정이 이 서버에 존재하지 않습니다. 계정/그룹 생성 단계를 먼저 수행하세요."
@@ -131,7 +198,7 @@ fi
 ORACLE_UNIX_GROUP="${UNIX_GROUP_NAME:-dba}"
 
 # ==========================================================
-# 6. 기존 설치 확인 - 있으면 정리 후 재배포 (멱등성)
+# 7. 기존 설치 확인 - 있으면 정리 후 재배포 (멱등성)
 # ==========================================================
 if [ -d /oracle/CLIENT ] || [ -d /oracle/orainventory ] || [ -f /oracle/.bash_profile ]; then
     log_warn "/oracle 하위에 기존 설치 흔적이 있습니다. 기존 내용을 제거하고 새로 배포합니다."
@@ -140,7 +207,7 @@ fi
 mkdir -p /oracle
 
 # ==========================================================
-# 7. 다운로드 공통 함수
+# 8. 다운로드 공통 함수
 #    (CLIENT tar / orainventory tar / .bash_profile 3개 파일에 공용 사용)
 # ==========================================================
 BASE_DOWNLOAD_URL="${BASE_URL}/files/linux/oracle_client_tar"
@@ -174,7 +241,7 @@ download_file "${BASE_DOWNLOAD_URL}/${INVENTORY_TAR}" "$INVENTORY_TAR_PATH" || {
 download_file "${BASE_DOWNLOAD_URL}/${BASH_PROFILE_SRC}" "$BASH_PROFILE_PATH" || { rm -rf "$WORK_DIR"; exit 1; }
 
 # ==========================================================
-# 8. tar 무결성 검증 + 압축 해제 공통 함수
+# 9. tar 무결성 검증 + 압축 해제 공통 함수
 #    (tar 최상위 항목이 기대하는 디렉터리명으로 시작하는지 확인 후
 #     /oracle 밑으로 풀되, 구조가 다르면 /oracle/<expected_name> 으로
 #     직접 풀어 방어)
@@ -231,7 +298,7 @@ rm -rf "$WORK_DIR"
 log_success "압축 해제 및 .bash_profile 배치 완료, 디렉터리 구조 확인됨"
 
 # ==========================================================
-# 9. 소유권 / 권한 설정
+# 10. 소유권 / 권한 설정
 # ==========================================================
 chown -R oracle:${ORACLE_UNIX_GROUP} /oracle
 chmod -R 750 /oracle/CLIENT /oracle/orainventory
@@ -245,7 +312,7 @@ fi
 log_success "소유권/권한 설정 완료 (oracle:${ORACLE_UNIX_GROUP})"
 
 # ==========================================================
-# 10. 경로 확정 (host env로 오버라이드 가능, 기본값은 기존 관례 그대로)
+# 11. 경로 확정 (host env로 오버라이드 가능, 기본값은 기존 관례 그대로)
 # ==========================================================
 ORACLE_HOME_PATH="${TARGET_ORACLE_HOME:-/oracle/CLIENT/oracle}"
 INVENTORY_PATH="${TARGET_INVENTORY_LOCATION:-/oracle/orainventory}"
@@ -257,7 +324,7 @@ if [ ! -f "${ORACLE_HOME_PATH}/oui/bin/runInstaller" ]; then
 fi
 
 # ==========================================================
-# 11. /etc/oraInst.loc 생성 (tar에는 포함되지 않는 시스템 전역 파일)
+# 12. /etc/oraInst.loc 생성 (tar에는 포함되지 않는 시스템 전역 파일)
 # ==========================================================
 cat > /etc/oraInst.loc <<EOF
 inventory_loc=${INVENTORY_PATH}
@@ -266,7 +333,7 @@ EOF
 log_info "/etc/oraInst.loc 생성 완료 (inventory_loc=${INVENTORY_PATH})"
 
 # ==========================================================
-# 12. 시스템 전역 라이브러리 경로 등록
+# 13. 시스템 전역 라이브러리 경로 등록
 #     (root 등 oracle 계정이 아닌 사용자도 sqlplus 등을 실행할 수 있도록)
 # ==========================================================
 echo "${ORACLE_HOME_PATH}/lib" > /etc/ld.so.conf.d/oracle-client.conf
@@ -274,7 +341,7 @@ ldconfig
 log_info "ldconfig 등록 완료 (${ORACLE_HOME_PATH}/lib)"
 
 # ==========================================================
-# 13. (선택) 호스트 전용 tnsnames.ora 배치
+# 14. (선택) 호스트 전용 tnsnames.ora 배치
 #     host env에 TNSNAMES_URL이 정의된 경우에만 golden 이미지의 기본값을 교체
 # ==========================================================
 if [ -n "${TNSNAMES_URL:-}" ]; then
@@ -290,7 +357,7 @@ if [ -n "${TNSNAMES_URL:-}" ]; then
 fi
 
 # ==========================================================
-# 14. Oracle Inventory에 Home 등록 (attachHome)
+# 15. Oracle Inventory에 Home 등록 (attachHome)
 # ==========================================================
 log_info "Oracle Inventory에 Home 등록 시도 (attachHome, ORACLE_HOME_NAME=${ORACLE_HOME_NAME})"
 
@@ -320,7 +387,7 @@ else
 fi
 
 # ==========================================================
-# 15. 설치 결과 검증
+# 16. 설치 결과 검증
 #     (핵심: 기존 zip 손상 사례처럼 0바이트 파일이 없는지 반드시 확인)
 # ==========================================================
 log_info "핵심 파일 무결성 검증 중..."
@@ -352,7 +419,7 @@ fi
 su - oracle -c "export LD_LIBRARY_PATH=${ORACLE_HOME_PATH}/lib; ${ORACLE_HOME_PATH}/bin/sqlplus -v" 2>&1
 
 # ==========================================================
-# 16. 완료
+# 17. 완료
 # ==========================================================
 END_TIME=$(date +%s)
 ELAPSED=$((END_TIME - START_TIME))
