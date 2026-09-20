@@ -215,6 +215,34 @@ else
 fi
 
 # ==============================================================================
+# 2-3. RHEL9+ relink 대비: libpthread_nonshared.a 누락 시 더미 아카이브 생성
+#   glibc 2.34부터 pthread 관련 함수가 libc.so에 직접 흡수되면서, 예전에
+#   정적 링크용으로 쓰이던 /usr/lib64/libpthread_nonshared.a 아카이브 자체가
+#   배포판에서 사라졌다(RHEL9/RHEL10 모두 해당). 뒤에서 실행할 runInstaller의
+#   relink 단계(client_sharedlib 등)가 이 파일의 "존재 여부"만 확인하고
+#   실제 심볼은 이미 libc에 포함돼 있어 쓰지 않기 때문에, 내용 없는 빈
+#   아카이브만 만들어둬도 relink가 FATAL 없이 끝까지 성공한다(RHEL10 실서버
+#   실제 설치 테스트로 확인, 2026-09-21). 이 파일이 이미 존재하면(RHEL8 등
+#   원래 glibc가 제공하는 환경) 아무 것도 하지 않고 그대로 둔다.
+#   ※ 만약 relink가 FATAL로 죽은 뒤에 이 파일을 나중에 만들면, 이미 깨진
+#     client_sharedlib 산출물(libclntshcore.so.19.1 등)이나 미링크 상태로
+#     남은 유틸리티(tnsping 등)는 복구가 안 되니 반드시 runInstaller 실행
+#     "전"에 미리 만들어둬야 한다.
+# ==============================================================================
+if [ ! -f /usr/lib64/libpthread_nonshared.a ]; then
+    log_warn "/usr/lib64/libpthread_nonshared.a 가 없습니다 (RHEL9+ glibc에서 제거된 파일). relink FATAL 방지를 위해 빈 더미 아카이브를 생성합니다."
+    ar cr /usr/lib64/libpthread_nonshared.a
+    if [ -f /usr/lib64/libpthread_nonshared.a ]; then
+        log_success "더미 아카이브 생성 완료: /usr/lib64/libpthread_nonshared.a"
+    else
+        log_error "더미 아카이브 생성 실패: /usr/lib64/libpthread_nonshared.a (ar 명령 확인 필요, binutils 패키지 설치 여부 점검)"
+        exit 1
+    fi
+else
+    log_info "/usr/lib64/libpthread_nonshared.a 존재 확인됨 (정상, 별도 조치 불필요)."
+fi
+
+# ==============================================================================
 # 3. 디렉토리 생성 및 권한 설정
 # ==============================================================================
 log_info "디렉토리 생성 및 권한을 설정합니다."
