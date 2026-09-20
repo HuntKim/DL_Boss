@@ -81,6 +81,16 @@ else
     log_warn "프로파일에 limits 항목이 없어 limits 검증을 건너뜁니다."
 fi
 
+# ==============================================================================
+# 3. HISTTIMEFORMAT 설정 검증 (프로파일과 무관하게 모든 호스트 공통 적용됨)
+# ==============================================================================
+HISTTIMEFORMAT_DST="/etc/profile.d/histtimeformat.sh"
+if [ -f "$HISTTIMEFORMAT_DST" ] && grep -q '^export HISTTIMEFORMAT=' "$HISTTIMEFORMAT_DST"; then
+    check "HISTTIMEFORMAT 설정 파일 존재 및 내용 확인 (${HISTTIMEFORMAT_DST})" "true"
+else
+    check "HISTTIMEFORMAT 설정 파일 존재 및 내용 확인 (${HISTTIMEFORMAT_DST})" "false"
+fi
+
 log_info "=================================================="
 log_info " 검증 결과: PASS ${PASS_COUNT} / FAIL ${FAIL_COUNT}"
 log_info "=================================================="

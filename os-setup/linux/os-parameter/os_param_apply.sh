@@ -133,4 +133,27 @@ else
     log_warn "프로파일에 limits 항목('=' 미포함 줄)이 없습니다. 건너뜁니다."
 fi
 
+# ==============================================================================
+# 3. Bash 히스토리 타임스탬프 설정 (HISTTIMEFORMAT)
+#    .bash_history에는 원래 매 명령 앞에 유닉스 타임스탬프가 주석으로 이미
+#    기록되지만, 셸에 HISTTIMEFORMAT이 설정되어 있어야 history 조회 시
+#    사람이 읽을 수 있는 날짜/시간으로 표시된다. 프로파일(sysctl/limits)과
+#    무관하게 모든 호스트에 공통 적용한다.
+# ==============================================================================
+HISTTIMEFORMAT_DST="/etc/profile.d/histtimeformat.sh"
+HISTTIMEFORMAT_STRING='%Y-%m-%d %T '
+
+# rollback.sh의 기본(default) 케이스가 쓰는 백업 이름 규칙
+# ("backup_$(basename "$target")")과 반드시 일치시켜야 한다.
+backup_if_needed "$HISTTIMEFORMAT_DST" "backup_$(basename "$HISTTIMEFORMAT_DST")"
+
+cat > "$HISTTIMEFORMAT_DST" <<EOF
+# $(basename "$0")에 의해 생성됨 - .bash_history 조회 시 타임스탬프 표시용
+export HISTTIMEFORMAT="${HISTTIMEFORMAT_STRING}"
+EOF
+chmod 644 "$HISTTIMEFORMAT_DST"
+
+log_success "HISTTIMEFORMAT 적용 완료: ${HISTTIMEFORMAT_DST} (기존 로그인 세션에는 적용 안 됨, 재로그인 필요)"
+manifest_record "created_os_param_files.txt" "$HISTTIMEFORMAT_DST"
+
 log_success "=== OS 파라미터 적용 완료: ${HOSTNAME_SHORT} (프로파일: ${HOST_OS_PARAM_PROFILE}) ==="
