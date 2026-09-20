@@ -6,19 +6,25 @@
 #   기존: runInstaller로 매번 새로 설치 (약 941MB zip 다운로드 + Java
 #         installer 실행) → 원본 zip 손상으로 tnsping 등 일부 파일이
 #         0바이트로 설치되는 문제 발견됨.
-#   신규: 이미 검증된 골든 서버의 /oracle 디렉터리(CLIENT, orainventory,
-#         .bash_profile 포함) 전체를 tar로 백업해둔 것을 그대로 풀어서
-#         복제. Oracle Inventory 등록만 -attachHome으로 별도 처리.
+#   신규: 이미 검증된 골든 서버의 /oracle/CLIENT, /oracle/orainventory를
+#         각각 tar로 백업해둔 것을 개별 다운로드하여 그대로 복제하고,
+#         oracle 계정용 .bash_profile도 별도 파일로 다운로드하여
+#         /oracle/.bash_profile로 교체. Oracle Inventory 등록만
+#         -attachHome으로 별도 처리.
 #
 # [사전 준비 - 운영자가 미리 해둘 것]
 #   RHEL 메이저 버전별 골든 서버에서 (예: RHEL8 골든 서버에서):
-#     cd / && tar cf oracle_8.tar oracle/
-#   RHEL9, RHEL10 골든 서버에서도 동일하게 oracle_9.tar, oracle_10.tar 생성.
-#   - tar 안에는 oracle/CLIENT, oracle/orainventory, oracle/.bash_profile이
-#     모두 포함되어 있어야 함 (.bash_profile은 오라클 계정용으로 미리 작성)
+#     cd /oracle && tar cf CLIENT_8.tar CLIENT/
+#     cd /oracle && tar cf orainventory_8.tar orainventory/
+#   RHEL9, RHEL10 골든 서버에서도 동일하게 반복 (파일명 접미사만 _9, _10)
+#   - oracle 계정용 .bash_profile은 bash_profile_8 / bash_profile_9 /
+#     bash_profile_10 이름으로 별도 준비 (RHEL 버전별 내용 차이는 없음)
 #   - 골든 서버 자체에서 tnsping 등 핵심 파일이 정상(0바이트 아님)인지
 #     먼저 반드시 검증할 것
-#   - 업로드 위치: ${BASE_URL}/files/linux/oracle_client_tar/oracle_{8,9,10}.tar
+#   - 업로드 위치 (총 9개 파일, 모두 같은 디렉터리):
+#       ${BASE_URL}/files/linux/oracle_client_tar/CLIENT_{8,9,10}.tar
+#       ${BASE_URL}/files/linux/oracle_client_tar/orainventory_{8,9,10}.tar
+#       ${BASE_URL}/files/linux/oracle_client_tar/bash_profile_{8,9,10}
 #
 # [호출 규약]
 #   install_oracle2.sh [SW_VERSION]
@@ -108,8 +114,12 @@ case "$OS_MAJOR" in
         ;;
 esac
 
-TAR_FILE="oracle_${OS_MAJOR}.tar"
-log_info "사용할 골든 이미지: ${TAR_FILE} (CV_ASSUME_DISTID=${OEL_VALUE})"
+# 버전별 다운로드 대상 파일명 (RHEL 8/9/10 모두 절차는 동일, 파일명 접미사만 다름)
+CLIENT_TAR="CLIENT_${OS_MAJOR}.tar"
+INVENTORY_TAR="orainventory_${OS_MAJOR}.tar"
+BASH_PROFILE_SRC="bash_profile_${OS_MAJOR}"
+
+log_info "사용할 골든 이미지: ${CLIENT_TAR}, ${INVENTORY_TAR}, ${BASH_PROFILE_SRC} (CV_ASSUME_DISTID=${OEL_VALUE})"
 
 # ==========================================================
 # 5. oracle 계정 존재 확인 (계정/그룹 생성 단계가 선행되어 있어야 함)
@@ -123,88 +133,110 @@ ORACLE_UNIX_GROUP="${UNIX_GROUP_NAME:-dba}"
 # ==========================================================
 # 6. 기존 설치 확인 - 있으면 정리 후 재배포 (멱등성)
 # ==========================================================
-if [ -d /oracle/CLIENT ] || [ -d /oracle/orainventory ]; then
-    log_warn "/oracle/CLIENT 또는 /oracle/orainventory가 이미 존재합니다. 기존 내용을 제거하고 새로 배포합니다."
+if [ -d /oracle/CLIENT ] || [ -d /oracle/orainventory ] || [ -f /oracle/.bash_profile ]; then
+    log_warn "/oracle 하위에 기존 설치 흔적이 있습니다. 기존 내용을 제거하고 새로 배포합니다."
     rm -rf /oracle/CLIENT /oracle/orainventory /oracle/.bash_profile
 fi
+mkdir -p /oracle
 
 # ==========================================================
-# 7. 골든 이미지 다운로드
+# 7. 다운로드 공통 함수
+#    (CLIENT tar / orainventory tar / .bash_profile 3개 파일에 공용 사용)
 # ==========================================================
-DOWNLOAD_URL="${BASE_URL}/files/linux/oracle_client_tar/${TAR_FILE}"
+BASE_DOWNLOAD_URL="${BASE_URL}/files/linux/oracle_client_tar"
 WORK_DIR="/var/tmp/oracle_clone_install"
-SOURCE_FILE="${WORK_DIR}/${TAR_FILE}"
 mkdir -p "$WORK_DIR"
 
-log_info "다운로드 시작: $DOWNLOAD_URL"
-if ! curl -f -s -k -L --retry 3 --retry-delay 3 "$DOWNLOAD_URL" -o "$SOURCE_FILE"; then
-    log_error "다운로드 실패: $DOWNLOAD_URL"
-    rm -rf "$WORK_DIR"
-    exit 1
-fi
+download_file() {
+    local url="$1"
+    local dest="$2"
+    log_info "다운로드 시작: $url"
+    if ! curl -f -s -k -L --retry 3 --retry-delay 3 "$url" -o "$dest"; then
+        log_error "다운로드 실패: $url"
+        return 1
+    fi
+    local size
+    size=$(stat -c%s "$dest" 2>/dev/null || echo 0)
+    if [ "$size" -eq 0 ]; then
+        log_error "다운로드된 파일이 비어 있습니다: $url"
+        return 1
+    fi
+    log_info "다운로드 완료: $dest (${size} bytes)"
+    return 0
+}
 
-# 다운로드 결과 크기 검증 (기존 zip 손상 사례 재발 방지 - 최소한의 방어선)
-LOCAL_SIZE=$(stat -c%s "$SOURCE_FILE" 2>/dev/null || echo 0)
-if [ "$LOCAL_SIZE" -lt 1000000 ]; then
-    log_error "다운로드된 파일이 비정상적으로 작습니다 (${LOCAL_SIZE} bytes). 원본 파일을 확인하세요: $DOWNLOAD_URL"
-    rm -rf "$WORK_DIR"
-    exit 1
-fi
-log_info "다운로드 완료: ${SOURCE_FILE} (${LOCAL_SIZE} bytes)"
+CLIENT_TAR_PATH="${WORK_DIR}/${CLIENT_TAR}"
+INVENTORY_TAR_PATH="${WORK_DIR}/${INVENTORY_TAR}"
+BASH_PROFILE_PATH="${WORK_DIR}/${BASH_PROFILE_SRC}"
+
+download_file "${BASE_DOWNLOAD_URL}/${CLIENT_TAR}" "$CLIENT_TAR_PATH" || { rm -rf "$WORK_DIR"; exit 1; }
+download_file "${BASE_DOWNLOAD_URL}/${INVENTORY_TAR}" "$INVENTORY_TAR_PATH" || { rm -rf "$WORK_DIR"; exit 1; }
+download_file "${BASE_DOWNLOAD_URL}/${BASH_PROFILE_SRC}" "$BASH_PROFILE_PATH" || { rm -rf "$WORK_DIR"; exit 1; }
 
 # ==========================================================
-# 8. tar 무결성 사전 검증 (풀기 전에 확인 - 기존 unzip 무검증 문제 재발 방지)
+# 8. tar 무결성 검증 + 압축 해제 공통 함수
+#    (tar 최상위 항목이 기대하는 디렉터리명으로 시작하는지 확인 후
+#     /oracle 밑으로 풀되, 구조가 다르면 /oracle/<expected_name> 으로
+#     직접 풀어 방어)
 # ==========================================================
-FILELIST="${WORK_DIR}/filelist.txt"
-if ! tar tf "$SOURCE_FILE" > "$FILELIST" 2>"${WORK_DIR}/tar_error.log"; then
-    log_error "tar 파일이 손상되어 목록을 읽을 수 없습니다. 아래 오류 참고:"
-    cat "${WORK_DIR}/tar_error.log"
-    rm -rf "$WORK_DIR"
-    exit 1
-fi
+extract_component_tar() {
+    local tar_file="$1"
+    local expected_name="$2"   # "CLIENT" 또는 "orainventory"
+    local filelist
+    filelist=$(mktemp)
 
-# ==========================================================
-# 9. tar 내부 구조 자동 판별 후 압축 해제
-#    ("oracle/"로 시작 -> "/"에 풀기, 아니면 "/oracle"에 바로 풀기)
-# ==========================================================
-TOP_ENTRY=$(head -n 1 "$FILELIST")
-if [[ "$TOP_ENTRY" == oracle/* || "$TOP_ENTRY" == "oracle" ]]; then
-    EXTRACT_TARGET="/"
-else
-    log_warn "tar 최상위 항목이 'oracle/'로 시작하지 않습니다 (${TOP_ENTRY}). /oracle 밑으로 바로 풉니다."
-    mkdir -p /oracle
-    EXTRACT_TARGET="/oracle"
-fi
+    if ! tar tf "$tar_file" > "$filelist" 2>"${WORK_DIR}/tar_error.log"; then
+        log_error "${tar_file} 파일이 손상되어 목록을 읽을 수 없습니다. 아래 오류 참고:"
+        cat "${WORK_DIR}/tar_error.log"
+        rm -f "$filelist"
+        return 1
+    fi
 
-log_info "압축 해제 대상: $EXTRACT_TARGET"
-if ! tar xpf "$SOURCE_FILE" -C "$EXTRACT_TARGET"; then
-    log_error "tar 압축 해제 실패."
-    rm -rf "$WORK_DIR"
-    exit 1
-fi
+    local top_entry
+    top_entry=$(head -n 1 "$filelist")
+    rm -f "$filelist"
 
-rm -rf "$WORK_DIR"
+    if [[ "$top_entry" == "${expected_name}/"* || "$top_entry" == "$expected_name" ]]; then
+        log_info "[${expected_name}] 압축 해제 대상: /oracle (tar 최상위 = ${expected_name}/)"
+        if ! tar xpf "$tar_file" -C /oracle; then
+            log_error "[${expected_name}] tar 압축 해제 실패."
+            return 1
+        fi
+    else
+        log_warn "[${expected_name}] tar 최상위 항목이 '${expected_name}/'로 시작하지 않습니다 (${top_entry}). /oracle/${expected_name} 밑으로 바로 풉니다."
+        mkdir -p "/oracle/${expected_name}"
+        if ! tar xpf "$tar_file" -C "/oracle/${expected_name}"; then
+            log_error "[${expected_name}] tar 압축 해제 실패."
+            return 1
+        fi
+    fi
+    return 0
+}
+
+extract_component_tar "$CLIENT_TAR_PATH" "CLIENT" || { rm -rf "$WORK_DIR"; exit 1; }
+extract_component_tar "$INVENTORY_TAR_PATH" "orainventory" || { rm -rf "$WORK_DIR"; exit 1; }
 
 # 필수 디렉터리 존재 확인
 for d in /oracle/CLIENT /oracle/orainventory; do
     if [ ! -d "$d" ]; then
         log_error "압축 해제 후 필수 디렉터리가 없습니다: $d (tar 내용물을 확인하세요)"
+        rm -rf "$WORK_DIR"
         exit 1
     fi
 done
-log_success "압축 해제 완료 및 디렉터리 구조 확인됨"
+
+# .bash_profile은 tar가 아닌 단일 파일이므로 바로 배치
+cp "$BASH_PROFILE_PATH" /oracle/.bash_profile
+rm -rf "$WORK_DIR"
+log_success "압축 해제 및 .bash_profile 배치 완료, 디렉터리 구조 확인됨"
 
 # ==========================================================
-# 10. 소유권 / 권한 설정
+# 9. 소유권 / 권한 설정
 # ==========================================================
 chown -R oracle:${ORACLE_UNIX_GROUP} /oracle
 chmod -R 750 /oracle/CLIENT /oracle/orainventory
-if [ -f /oracle/.bash_profile ]; then
-    chown oracle:${ORACLE_UNIX_GROUP} /oracle/.bash_profile
-    chmod 640 /oracle/.bash_profile
-else
-    log_warn "/oracle/.bash_profile이 tar 안에 없습니다. 환경변수가 누락됐을 수 있으니 확인하세요."
-fi
+chown oracle:${ORACLE_UNIX_GROUP} /oracle/.bash_profile
+chmod 640 /oracle/.bash_profile
 
 # SELinux 컨텍스트 복구 (enforcing 환경에서 tar로 옮긴 파일은 라벨이 깨질 수 있음)
 if command -v restorecon >/dev/null 2>&1; then
@@ -213,7 +245,7 @@ fi
 log_success "소유권/권한 설정 완료 (oracle:${ORACLE_UNIX_GROUP})"
 
 # ==========================================================
-# 11. 경로 확정 (host env로 오버라이드 가능, 기본값은 기존 관례 그대로)
+# 10. 경로 확정 (host env로 오버라이드 가능, 기본값은 기존 관례 그대로)
 # ==========================================================
 ORACLE_HOME_PATH="${TARGET_ORACLE_HOME:-/oracle/CLIENT/oracle}"
 INVENTORY_PATH="${TARGET_INVENTORY_LOCATION:-/oracle/orainventory}"
@@ -225,7 +257,7 @@ if [ ! -f "${ORACLE_HOME_PATH}/oui/bin/runInstaller" ]; then
 fi
 
 # ==========================================================
-# 12. /etc/oraInst.loc 생성 (tar에는 포함되지 않는 시스템 전역 파일)
+# 11. /etc/oraInst.loc 생성 (tar에는 포함되지 않는 시스템 전역 파일)
 # ==========================================================
 cat > /etc/oraInst.loc <<EOF
 inventory_loc=${INVENTORY_PATH}
@@ -234,7 +266,7 @@ EOF
 log_info "/etc/oraInst.loc 생성 완료 (inventory_loc=${INVENTORY_PATH})"
 
 # ==========================================================
-# 13. 시스템 전역 라이브러리 경로 등록
+# 12. 시스템 전역 라이브러리 경로 등록
 #     (root 등 oracle 계정이 아닌 사용자도 sqlplus 등을 실행할 수 있도록)
 # ==========================================================
 echo "${ORACLE_HOME_PATH}/lib" > /etc/ld.so.conf.d/oracle-client.conf
@@ -242,7 +274,7 @@ ldconfig
 log_info "ldconfig 등록 완료 (${ORACLE_HOME_PATH}/lib)"
 
 # ==========================================================
-# 14. (선택) 호스트 전용 tnsnames.ora 배치
+# 13. (선택) 호스트 전용 tnsnames.ora 배치
 #     host env에 TNSNAMES_URL이 정의된 경우에만 golden 이미지의 기본값을 교체
 # ==========================================================
 if [ -n "${TNSNAMES_URL:-}" ]; then
@@ -258,7 +290,7 @@ if [ -n "${TNSNAMES_URL:-}" ]; then
 fi
 
 # ==========================================================
-# 15. Oracle Inventory에 Home 등록 (attachHome)
+# 14. Oracle Inventory에 Home 등록 (attachHome)
 # ==========================================================
 log_info "Oracle Inventory에 Home 등록 시도 (attachHome, ORACLE_HOME_NAME=${ORACLE_HOME_NAME})"
 
@@ -288,7 +320,7 @@ else
 fi
 
 # ==========================================================
-# 16. 설치 결과 검증
+# 15. 설치 결과 검증
 #     (핵심: 기존 zip 손상 사례처럼 0바이트 파일이 없는지 반드시 확인)
 # ==========================================================
 log_info "핵심 파일 무결성 검증 중..."
@@ -313,14 +345,14 @@ for f in "${CRITICAL_FILES[@]}"; do
 done
 
 if [ "$VERIFY_FAIL" -eq 1 ]; then
-    log_error "설치 검증 실패 - golden 이미지(${TAR_FILE}) 자체를 다시 확인하세요."
+    log_error "설치 검증 실패 - golden 이미지(${CLIENT_TAR}/${INVENTORY_TAR}) 자체를 다시 확인하세요."
     exit 1
 fi
 
 su - oracle -c "export LD_LIBRARY_PATH=${ORACLE_HOME_PATH}/lib; ${ORACLE_HOME_PATH}/bin/sqlplus -v" 2>&1
 
 # ==========================================================
-# 17. 완료
+# 16. 완료
 # ==========================================================
 END_TIME=$(date +%s)
 ELAPSED=$((END_TIME - START_TIME))
