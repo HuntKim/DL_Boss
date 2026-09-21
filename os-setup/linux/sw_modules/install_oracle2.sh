@@ -195,7 +195,7 @@ if ! id oracle >/dev/null 2>&1; then
     log_error "oracle 계정이 이 서버에 존재하지 않습니다. 계정/그룹 생성 단계를 먼저 수행하세요."
     exit 1
 fi
-ORACLE_UNIX_GROUP="${UNIX_GROUP_NAME:-dba}"
+ORACLE_UNIX_GROUP=${TARGET_UNIX_GROUP_NAME}
 
 # ==========================================================
 # 7. 기존 설치 확인 - 있으면 정리 후 재배포 (멱등성)
@@ -210,7 +210,7 @@ mkdir -p /oracle
 # 8. 다운로드 공통 함수
 #    (CLIENT tar / orainventory tar / .bash_profile 3개 파일에 공용 사용)
 # ==========================================================
-BASE_DOWNLOAD_URL="${BASE_URL}/files/linux/oracle_client_tar"
+BASE_DOWNLOAD_URL="${FILE_URL}/oracle_client_tar"
 WORK_DIR="/var/tmp/oracle_clone_install"
 mkdir -p "$WORK_DIR"
 
@@ -314,9 +314,9 @@ log_success "소유권/권한 설정 완료 (oracle:${ORACLE_UNIX_GROUP})"
 # ==========================================================
 # 11. 경로 확정 (host env로 오버라이드 가능, 기본값은 기존 관례 그대로)
 # ==========================================================
-ORACLE_HOME_PATH="${TARGET_ORACLE_HOME:-/oracle/CLIENT/oracle}"
-INVENTORY_PATH="${TARGET_INVENTORY_LOCATION:-/oracle/orainventory}"
-ORACLE_HOME_NAME="${TARGET_ORACLE_HOME_NAME:-OraClient19Home1}"
+ORACLE_HOME_PATH=${TARGET_ORACLE_HOME}
+INVENTORY_PATH=${TARGET_INVENTORY_LOCATION}
+ORACLE_HOME_NAME=${TARGET_ORACLE_HOME_NAME}
 
 if [ ! -f "${ORACLE_HOME_PATH}/oui/bin/runInstaller" ]; then
     log_error "ORACLE_HOME(${ORACLE_HOME_PATH}) 경로가 예상과 다릅니다. golden tar 구조 또는 TARGET_ORACLE_HOME 설정을 확인하세요."
@@ -342,8 +342,8 @@ log_info "ldconfig 등록 완료 (${ORACLE_HOME_PATH}/lib)"
 
 # ==========================================================
 # 14. (선택) 호스트 전용 tnsnames.ora 배치
-#     host env에 TNSNAMES_URL이 정의된 경우에만 golden 이미지의 기본값을 교체
 # ==========================================================
+TNSNAMES_URL="${FILE_URL}/tnsnames/${TARGET_HOSTNAME}.tnsnames.ora"
 if [ -n "${TNSNAMES_URL:-}" ]; then
     TNSNAMES_DEST="${ORACLE_HOME_PATH}/network/admin/tnsnames.ora"
     log_info "호스트 전용 tnsnames.ora 다운로드: $TNSNAMES_URL"
