@@ -86,6 +86,8 @@
      export LD_LIBRARY_PATH=$ORACLE_HOME/lib
      export PATH=$ORACLE_HOME/bin:$PATH
      ```
+   - echo "/oracle/CLIENT/lib" > /etc/ld.so.conf.d/oracle-client.conf
+   - ldconfig
    - `/etc/ld.so.conf.d/oracle-client.conf` + `ldconfig` (root 등 다른 계정
      대응)
    - 대상 서버 전용 `tnsnames.ora`로 교체
