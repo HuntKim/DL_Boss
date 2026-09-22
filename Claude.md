@@ -95,10 +95,16 @@
    ```
     su - oracle
     cd /oracle/CLIENT/oracle
-    ./runInstaller -silent -attachHome \
-    -invPtrLoc /etc/oraInst.loc \
+    CV_ASSUME_DISTID=OEL7.8 ./runInstaller -silent -attachHome \
     ORACLE_HOME=/oracle/CLIENT/oracle \
     ORACLE_HOME_NAME=OraCleient19Home1
+
+   ==> 동작은 정상 [WARNING] [INS-08101] Unexpected error while executing the action at state: 'clientSupportedOSCheck'
+   CAUSE: No additional information available.
+   ACTION: Contact Oracle Support Services or refer to the software manual.
+   SUMMARY:
+       - java.lang.NullPointerException
+
    ```
    [확인]
    ```
