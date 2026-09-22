@@ -86,7 +86,7 @@
      export LD_LIBRARY_PATH=$ORACLE_HOME/lib
      export PATH=$ORACLE_HOME/bin:$PATH
      ```
-   - echo "/oracle/CLIENT/lib" > /etc/ld.so.conf.d/oracle-client.conf
+   - echo "/oracle/CLIENT/oracle/lib" > /etc/ld.so.conf.d/oracle-client.conf
    - ldconfig
    - `/etc/ld.so.conf.d/oracle-client.conf` + `ldconfig` (root 등 다른 계정
      대응)
