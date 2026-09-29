@@ -200,18 +200,18 @@ ORACLE_UNIX_GROUP=${TARGET_UNIX_GROUP_NAME}
 # ==========================================================
 # 7. 기존 설치 확인 - 있으면 정리 후 재배포 (멱등성)
 # ==========================================================
-if [ -d /oracle/CLIENT ] || [ -d /oracle/orainventory ] || [ -f /oracle/.bash_profile ]; then
+if [ -d ${TARGET_ORACLE_BASE} ] || [ -d ${TARGET_INVENTORY_LOCATION} ] || [ -f ${TARGET_ORACLE_PATH}/.bash_profile ]; then
     log_warn "/oracle 하위에 기존 설치 흔적이 있습니다. 기존 내용을 제거하고 새로 배포합니다."
-    rm -rf /oracle/CLIENT /oracle/orainventory /oracle/.bash_profile
+    rm -rf ${TARGET_ORACLE_BASE} ${TARGET_INVENTORY_LOCATION} ${TARGET_ORACLE_PATH}/.bash_profile
 fi
-mkdir -p /oracle
+# mkdir -p /oracle
 
 # ==========================================================
 # 8. 다운로드 공통 함수
 #    (CLIENT tar / orainventory tar / .bash_profile 3개 파일에 공용 사용)
 # ==========================================================
 BASE_DOWNLOAD_URL="${FILE_URL}/oracle_client_tar"
-WORK_DIR="/var/tmp/oracle_clone_install"
+WORK_DIR="${BASE_DIR}/oracle_clone_install"
 mkdir -p "$WORK_DIR"
 
 download_file() {
@@ -264,15 +264,15 @@ extract_component_tar() {
     rm -f "$filelist"
 
     if [[ "$top_entry" == "${expected_name}/"* || "$top_entry" == "$expected_name" ]]; then
-        log_info "[${expected_name}] 압축 해제 대상: /oracle (tar 최상위 = ${expected_name}/)"
-        if ! tar xpf "$tar_file" -C /oracle; then
+        log_info "[${expected_name}] 압축 해제 대상: ${TARGET_ORACLE_PATH} (tar 최상위 = ${expected_name}/)"
+        if ! tar xpf "$tar_file" -C ${TARGET_ORACLE_PATH}; then
             log_error "[${expected_name}] tar 압축 해제 실패."
             return 1
         fi
     else
-        log_warn "[${expected_name}] tar 최상위 항목이 '${expected_name}/'로 시작하지 않습니다 (${top_entry}). /oracle/${expected_name} 밑으로 바로 풉니다."
-        mkdir -p "/oracle/${expected_name}"
-        if ! tar xpf "$tar_file" -C "/oracle/${expected_name}"; then
+        log_warn "[${expected_name}] tar 최상위 항목이 '${expected_name}/'로 시작하지 않습니다 (${top_entry}). ${TARGET_ORACLE_PATH}/${expected_name} 밑으로 바로 풉니다."
+        mkdir -p "${TARGET_ORACLE_PATH}/${expected_name}"
+        if ! tar xpf "$tar_file" -C "${TARGET_ORACLE_PATH}/${expected_name}"; then
             log_error "[${expected_name}] tar 압축 해제 실패."
             return 1
         fi
@@ -284,7 +284,7 @@ extract_component_tar "$CLIENT_TAR_PATH" "CLIENT" || { rm -rf "$WORK_DIR"; exit 
 extract_component_tar "$INVENTORY_TAR_PATH" "orainventory" || { rm -rf "$WORK_DIR"; exit 1; }
 
 # 필수 디렉터리 존재 확인
-for d in /oracle/CLIENT /oracle/orainventory; do
+for d in ${TARGET_ORACLE_BASE} ${TARGET_INVENTORY_LOCATION}; do
     if [ ! -d "$d" ]; then
         log_error "압축 해제 후 필수 디렉터리가 없습니다: $d (tar 내용물을 확인하세요)"
         rm -rf "$WORK_DIR"
@@ -293,23 +293,23 @@ for d in /oracle/CLIENT /oracle/orainventory; do
 done
 
 # .bash_profile은 tar가 아닌 단일 파일이므로 바로 배치
-cp "$BASH_PROFILE_PATH" /oracle/.bash_profile
+cp "$BASH_PROFILE_PATH" ${TARGET_ORACLE_PATH}/.bash_profile
 rm -rf "$WORK_DIR"
 log_success "압축 해제 및 .bash_profile 배치 완료, 디렉터리 구조 확인됨"
 
 # ==========================================================
 # 10. 소유권 / 권한 설정
 # ==========================================================
-chown -R oracle:${ORACLE_UNIX_GROUP} /oracle
-chmod -R 750 /oracle/CLIENT /oracle/orainventory
-chown oracle:${ORACLE_UNIX_GROUP} /oracle/.bash_profile
-chmod 640 /oracle/.bash_profile
+chown -R ${TARGET_ORACLE_OWNER} ${TARGET_ORACLE_PATH}
+chmod -R 750 ${TARGET_ORACLE_BASE} ${TARGET_INVENTORY_LOCATION}
+chown oracle:${ORACLE_UNIX_GROUP} ${TARGET_ORACLE_PATH}/.bash_profile
+chmod 640 ${TARGET_ORACLE_PATH}/.bash_profile
 
 # SELinux 컨텍스트 복구 (enforcing 환경에서 tar로 옮긴 파일은 라벨이 깨질 수 있음)
 if command -v restorecon >/dev/null 2>&1; then
     restorecon -R /oracle 2>/dev/null || true
 fi
-log_success "소유권/권한 설정 완료 (oracle:${ORACLE_UNIX_GROUP})"
+log_success "소유권/권한 설정 완료 (${TARGET_ORACLE_OWNER})"
 
 # ==========================================================
 # 11. 경로 확정 (host env로 오버라이드 가능, 기본값은 기존 관례 그대로)
@@ -343,7 +343,7 @@ log_info "ldconfig 등록 완료 (${ORACLE_HOME_PATH}/lib)"
 # ==========================================================
 # 14. (선택) 호스트 전용 tnsnames.ora 배치
 # ==========================================================
-TNSNAMES_URL="${FILE_URL}/tnsnames/${TARGET_HOSTNAME}.tnsnames.ora"
+TNSNAMES_URL="${$CONFIG_DIR}/tnsnames/${TARGET_HOSTNAME}.tnsnames.ora"
 if [ -n "${TNSNAMES_URL:-}" ]; then
     TNSNAMES_DEST="${ORACLE_HOME_PATH}/network/admin/tnsnames.ora"
     log_info "호스트 전용 tnsnames.ora 다운로드: $TNSNAMES_URL"
