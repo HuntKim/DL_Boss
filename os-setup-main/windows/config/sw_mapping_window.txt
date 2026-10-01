@@ -12,8 +12,8 @@ DVPKSMCSW01M:Net_Framework_4.8_64b,IIS_10.0,ftp,openjdk_1.8.0_482_64b
 DVPKSMCSD01M:ssms_22
 RTPCADSA01M:Net_Framework_4.8_64b,oracle_jdk_1.7.0_80_64b,python_3.12.0_64b,visual_studio_code_1.108.1_64b,oracle_client_19.3.0.0
 DVPGFPA01M:Net_Framework_4.8_64b,IIS_10.0,ftp,oracle_client_19.3.0.0
-RTPGGCSW01M:Net_Framework_4.8_64b,IIS_10.0,ftp,oracle_jdk_1.8.0_271_64b,oracle_client_19.3.0.0
-RTPGGCSW02M:Net_Framework_4.8_64b,IIS_10.0,ftp,oracle_jdk_1.8.0_271_64b,oracle_client_19.3.0.0
+RTPGGCSW01M:Net_Framework_4.8_64b,IIS_10.0,ftp,oracle_jdk_1.8.0_271_64b,python_3.12.0_64b,oracle_client_19.3.0.0
+RTPGGCSW02M:Net_Framework_4.8_64b,IIS_10.0,ftp,oracle_jdk_1.8.0_271_64b,python_3.12.0_64b,oracle_client_19.3.0.0
 RTPGGCSIOA01M:Net_Framework_4.8_64b,IIS_10.0,ftp,oracle_jdk_1.8.0_271_64b,oracle_client_19.3.0.0
 RTPGGCSIOA02M:Net_Framework_4.8_64b,IIS_10.0,ftp,oracle_jdk_1.8.0_271_64b,oracle_client_19.3.0.0
 RTPP66MA01M:Net_Framework_4.8_64b,oracle_client_19.3.0.0
