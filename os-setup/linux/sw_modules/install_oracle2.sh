@@ -272,7 +272,7 @@ extract_component_tar() {
     else
         log_warn "[${expected_name}] tar 최상위 항목이 '${expected_name}/'로 시작하지 않습니다 (${top_entry}). ${TARGET_ORACLE_PATH}/${expected_name} 밑으로 바로 풉니다."
         mkdir -p "${TARGET_ORACLE_PATH}/${expected_name}"
-        if ! tar xpf "$tar_file" -C "${TARGET_ORACLE_PATH}/${expected_name}"; then
+        if ! tar xpf "$tar_file" -C ${TARGET_ORACLE_PATH}; then
             log_error "[${expected_name}] tar 압축 해제 실패."
             return 1
         fi
