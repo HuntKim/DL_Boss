@@ -1,0 +1,54 @@
+﻿Hostname,User1,Pass1,Group1,User2,Pass2,Group2,User3,Pass3,Group3,User4,Pass4,Group4,User5,Pass5,Group5
+DVPKSMCSW01M,SMCS,DSmes123!,Administrators;Remote Desktop Users,osmanaged,cotsadm1!,Administrators;Remote Desktop Users      
+DVPKSMCSD01M,SMCS,DSmes123!,Administrators;Remote Desktop Users,osmanaged,cotsadm1!,Administrators;Remote Desktop Users  
+PPNMSA01M,iptm,DSmes123!,Administrators;Remote Desktop Users,xpert,DSmes123!,Administrators;Remote Desktop Users,osmanaged,cotsadm1!,Administrators;Remote Desktop Users  
+DRPPNMSA01M,iptm,DSmes123!,Administrators;Remote Desktop Users,xpert,DSmes123!,Administrators;Remote Desktop Users,osmanaged,cotsadm1!,Administrators;Remote Desktop Users  
+PPNMSD01M,iptm,DSmes123!,Administrators;Remote Desktop Users,xpert,DSmes123!,Administrators;Remote Desktop Users,osmanaged,cotsadm1!,Administrators;Remote Desktop Users  
+DRPPNMSD01M,iptm,DSmes123!,Administrators;Remote Desktop Users,xpert,DSmes123!,Administrators;Remote Desktop Users,osmanaged,cotsadm1!,Administrators;Remote Desktop Users
+PPNMSCA01M,iptm,DSmes123!,Administrators;Remote Desktop Users,xpert,DSmes123!,Administrators;Remote Desktop Users,osmanaged,cotsadm1!,Administrators;Remote Desktop Users
+PPNMSCA02M,iptm,DSmes123!,Administrators;Remote Desktop Users,xpert,DSmes123!,Administrators;Remote Desktop Users,osmanaged,cotsadm1!,Administrators;Remote Desktop Users
+PPNMSCA03M,iptm,DSmes123!,Administrators;Remote Desktop Users,xpert,DSmes123!,Administrators;Remote Desktop Users,osmanaged,cotsadm1!,Administrators;Remote Desktop Users
+PPNMSCA04M,iptm,DSmes123!,Administrators;Remote Desktop Users,xpert,DSmes123!,Administrators;Remote Desktop Users,osmanaged,cotsadm1!,Administrators;Remote Desktop Users
+PPNMSCA05M,iptm,DSmes123!,Administrators;Remote Desktop Users,xpert,DSmes123!,Administrators;Remote Desktop Users,osmanaged,cotsadm1!,Administrators;Remote Desktop Users
+PPNMSCA06M,iptm,DSmes123!,Administrators;Remote Desktop Users,xpert,DSmes123!,Administrators;Remote Desktop Users,osmanaged,cotsadm1!,Administrators;Remote Desktop Users
+PPNMSCA07M,iptm,DSmes123!,Administrators;Remote Desktop Users,xpert,DSmes123!,Administrators;Remote Desktop Users,osmanaged,cotsadm1!,Administrators;Remote Desktop Users
+PPNMSCA08M,iptm,DSmes123!,Administrators;Remote Desktop Users,xpert,DSmes123!,Administrators;Remote Desktop Users,osmanaged,cotsadm1!,Administrators;Remote Desktop Users
+PPNMSCA09M,iptm,DSmes123!,Administrators;Remote Desktop Users,xpert,DSmes123!,Administrators;Remote Desktop Users,osmanaged,cotsadm1!,Administrators;Remote Desktop Users
+PPNMSCA10M,iptm,DSmes123!,Administrators;Remote Desktop Users,xpert,DSmes123!,Administrators;Remote Desktop Users,osmanaged,cotsadm1!,Administrators;Remote Desktop Users
+PPNMSCA11M,iptm,DSmes123!,Administrators;Remote Desktop Users,xpert,DSmes123!,Administrators;Remote Desktop Users,osmanaged,cotsadm1!,Administrators;Remote Desktop Users
+PPNMSCA12M,iptm,DSmes123!,Administrators;Remote Desktop Users,xpert,DSmes123!,Administrators;Remote Desktop Users,osmanaged,cotsadm1!,Administrators;Remote Desktop Users
+PPNMSCA13M,iptm,DSmes123!,Administrators;Remote Desktop Users,xpert,DSmes123!,Administrators;Remote Desktop Users,osmanaged,cotsadm1!,Administrators;Remote Desktop Users
+PPNMSCA14M,iptm,DSmes123!,Administrators;Remote Desktop Users,xpert,DSmes123!,Administrators;Remote Desktop Users,osmanaged,cotsadm1!,Administrators;Remote Desktop Users
+PPNMSCA15M,iptm,DSmes123!,Administrators;Remote Desktop Users,xpert,DSmes123!,Administrators;Remote Desktop Users,osmanaged,cotsadm1!,Administrators;Remote Desktop Users
+PPNMSCA16M,iptm,DSmes123!,Administrators;Remote Desktop Users,xpert,DSmes123!,Administrators;Remote Desktop Users,osmanaged,cotsadm1!,Administrators;Remote Desktop Users
+PP2NMSCA01M,iptm,DSmes123!,Administrators;Remote Desktop Users,xpert,DSmes123!,Administrators;Remote Desktop Users,osmanaged,cotsadm1!,Administrators;Remote Desktop Users
+PP2NMSCA02M,iptm,DSmes123!,Administrators;Remote Desktop Users,xpert,DSmes123!,Administrators;Remote Desktop Users,osmanaged,cotsadm1!,Administrators;Remote Desktop Users
+PP2NMSCA03M,iptm,DSmes123!,Administrators;Remote Desktop Users,xpert,DSmes123!,Administrators;Remote Desktop Users,osmanaged,cotsadm1!,Administrators;Remote Desktop Users
+PP2NMSCA04M,iptm,DSmes123!,Administrators;Remote Desktop Users,xpert,DSmes123!,Administrators;Remote Desktop Users,osmanaged,cotsadm1!,Administrators;Remote Desktop Users
+PP2NMSCA05M,iptm,DSmes123!,Administrators;Remote Desktop Users,xpert,DSmes123!,Administrators;Remote Desktop Users,osmanaged,cotsadm1!,Administrators;Remote Desktop Users
+PP2NMSCA06M,iptm,DSmes123!,Administrators;Remote Desktop Users,xpert,DSmes123!,Administrators;Remote Desktop Users,osmanaged,cotsadm1!,Administrators;Remote Desktop Users
+PP2NMSCA07M,iptm,DSmes123!,Administrators;Remote Desktop Users,xpert,DSmes123!,Administrators;Remote Desktop Users,osmanaged,cotsadm1!,Administrators;Remote Desktop Users
+PPNMSCA17M,iptm,DSmes123!,Administrators;Remote Desktop Users,xpert,DSmes123!,Administrators;Remote Desktop Users,osmanaged,cotsadm1!,Administrators;Remote Desktop Users
+PP2NMSCA08M,iptm,DSmes123!,Administrators;Remote Desktop Users,xpert,DSmes123!,Administrators;Remote Desktop Users,osmanaged,cotsadm1!,Administrators;Remote Desktop Users
+PPNMSCA18M,iptm,DSmes123!,Administrators;Remote Desktop Users,xpert,DSmes123!,Administrators;Remote Desktop Users,osmanaged,cotsadm1!,Administrators;Remote Desktop Users
+PPEDAV2A01M,smdev,DSmes123!,Administrators;Remote Desktop Users,smprc,DSmes123!,Administrators;Remote Desktop Users,amsadmin,DSmes123!,Administrators;Remote Desktop Users,osmanaged,cotsadm1!,Administrators;Remote Desktop Users
+PPEDAV2A02M,smdev,DSmes123!,Administrators;Remote Desktop Users,smprc,DSmes123!,Administrators;Remote Desktop Users,amsadmin,DSmes123!,Administrators;Remote Desktop Users,osmanaged,cotsadm1!,Administrators;Remote Desktop Users
+PPEDAPWPA01M,smdev,DSmes123!,Administrators;Remote Desktop Users,smprc,DSmes123!,Administrators;Remote Desktop Users,amsadmin,DSmes123!,Administrators;Remote Desktop Users,osmanaged,cotsadm1!,Administrators;Remote Desktop Users
+PPEDAPWPA02M,smdev,DSmes123!,Administrators;Remote Desktop Users,smprc,DSmes123!,Administrators;Remote Desktop Users,amsadmin,DSmes123!,Administrators;Remote Desktop Users,osmanaged,cotsadm1!,Administrators;Remote Desktop Users
+PPEDAS5BEA01M,smdev,DSmes123!,Administrators;Remote Desktop Users,smprc,DSmes123!,Administrators;Remote Desktop Users,amsadmin,DSmes123!,Administrators;Remote Desktop Users,osmanaged,cotsadm1!,Administrators;Remote Desktop Users
+PPEDAS5BEA02M,smdev,DSmes123!,Administrators;Remote Desktop Users,smprc,DSmes123!,Administrators;Remote Desktop Users,amsadmin,DSmes123!,Administrators;Remote Desktop Users,osmanaged,cotsadm1!,Administrators;Remote Desktop Users
+PPEDAP3ANA01M,smdev,DSmes123!,Administrators;Remote Desktop Users,smprc,DSmes123!,Administrators;Remote Desktop Users,amsadmin,DSmes123!,Administrators;Remote Desktop Users,osmanaged,cotsadm1!,Administrators;Remote Desktop Users
+PPEDAP3ANA02M,smdev,DSmes123!,Administrators;Remote Desktop Users,smprc,DSmes123!,Administrators;Remote Desktop Users,amsadmin,DSmes123!,Administrators;Remote Desktop Users,osmanaged,cotsadm1!,Administrators;Remote Desktop Users
+PPEDAP3CNA01M,smdev,DSmes123!,Administrators;Remote Desktop Users,smprc,DSmes123!,Administrators;Remote Desktop Users,amsadmin,DSmes123!,Administrators;Remote Desktop Users,osmanaged,cotsadm1!,Administrators;Remote Desktop Users
+PPEDAP3CNA02M,smdev,DSmes123!,Administrators;Remote Desktop Users,smprc,DSmes123!,Administrators;Remote Desktop Users,amsadmin,DSmes123!,Administrators;Remote Desktop Users,osmanaged,cotsadm1!,Administrators;Remote Desktop Users
+PPEDAP4CNA01M,smdev,DSmes123!,Administrators;Remote Desktop Users,smprc,DSmes123!,Administrators;Remote Desktop Users,amsadmin,DSmes123!,Administrators;Remote Desktop Users,osmanaged,cotsadm1!,Administrators;Remote Desktop Users
+PPEDAP4CNA02M,smdev,DSmes123!,Administrators;Remote Desktop Users,smprc,DSmes123!,Administrators;Remote Desktop Users,amsadmin,DSmes123!,Administrators;Remote Desktop Users,osmanaged,cotsadm1!,Administrators;Remote Desktop Users
+POFITSA01M,appuser,DSmes123!,appgroup;Administrators;Remote Desktop Users,fitsuser,DSmes123!,fitsgroup;Administrators;Remote Desktop Users,osmanaged,cotsadm1!,Administrators;Remote Desktop Users
+DVPHSMCSW01M,SMCS,DSmes123!,Administrators;Remote Desktop Users,osmanaged,cotsadm1!,Administrators;Remote Desktop Users
+DVPHSMCSD01M,SMCS,DSmes123!,Administrators;Remote Desktop Users,osmanaged,cotsadm1!,Administrators;Remote Desktop Users
+DVPPSMCSW01M,SMCS,DSmes123!,Administrators;Remote Desktop Users,osmanaged,cotsadm1!,Administrators;Remote Desktop Users
+DVPPSMCSD01M,SMCS,DSmes123!,Administrators;Remote Desktop Users,osmanaged,cotsadm1!,Administrators;Remote Desktop Users
+DVPCSMCSW01M,SMCS,DSmes123!,Administrators;Remote Desktop Users,osmanaged,cotsadm1!,Administrators;Remote Desktop Users
+DVPCSMCSD01M,SMCS,DSmes123!,Administrators;Remote Desktop Users,osmanaged,cotsadm1!,Administrators;Remote Desktop Users
+
+ 
