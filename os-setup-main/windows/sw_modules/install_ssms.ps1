@@ -1,129 +1,75 @@
-﻿# sw_modules/install_ssms.ps1
-# ===========================================================================
-# SSMS (SQL Server Management Studio) 설치 모듈
-# SSMS 22 버전 silent 설치 지원
-# ===========================================================================
+﻿# sw_modules/setup_sw.ps1
+# ==============================================================================
+# SW 설치 메인 컨트롤러 (로그 기능 활성화)
+# ==============================================================================
 
-param(
-    [string]$TargetVersion,       # 설치 대상 버전 (예: 22)
-    [string]$HostConfigFile,      # 호스트 전용 설정 파일 경로
-    [string]$CommonConfigFile     # 전역 공통 설정 파일 경로
-)
+$HostName = $env:COMPUTERNAME
 
-# ---------------------------------------------------------------------------
-# [1단계] 공통 설정 및 호스트 설정 로드
-# ---------------------------------------------------------------------------
-if (Test-Path $CommonConfigFile) { . $CommonConfigFile } else {
-    Write-Host "[ERROR] 공통 설정 파일($CommonConfigFile)을 찾을 수 없습니다." -ForegroundColor Red
+# 내부 config 경로 설정
+$ConfigDir    = Resolve-Path "$PSScriptRoot\..\config"
+$CommonConfig = "$ConfigDir\windows_common.ps1"
+$HostConfig   = "$ConfigDir\env\$HostName.ps1"
+$MappingFile  = "$ConfigDir\sw_mapping_window.txt"
+
+# 1. 공통 설정 로드 (로그 함수 사용을 위해)
+if (Test-Path $CommonConfig) { . $CommonConfig } else {
+    Write-Host "[ERROR] 공통 설정 스크립트($CommonConfig)가 없습니다." -ForegroundColor Red
     exit 1
 }
 
-if (Test-Path $HostConfigFile) {
-    . $HostConfigFile
-}
+# 2. 파일 로깅 시작 (Transcript)
+$LogFile = "$global:LOG_DIR\setup_sw_$($HostName)_$(Get-Date -Format 'yyyyMMdd_HHmmss').log"
+Start-Transcript -Path $LogFile -Append | Out-Null
 
-if ([string]::IsNullOrEmpty($TargetVersion)) {
-    Log-Error "TargetVersion 파라미터가 지정되지 않았습니다."
+Log-Info "========================================================="
+Log-Info " SW 자동 설치 작업을 시작합니다. (Host: $HostName)"
+Log-Info " 로그 파일 저장 위치: $LogFile"
+Log-Info "========================================================="
+
+# 3. 매핑 파일 읽기 및 설치 진행
+if (-not (Test-Path $MappingFile)) {
+    Log-Error "SW 매핑 파일($MappingFile)을 찾을 수 없습니다."
+    Stop-Transcript | Out-Null
     exit 1
 }
 
-$TargetVersion = $TargetVersion.Trim()
-Log-Info "=== SSMS $TargetVersion 설치 모듈 시작 ==="
+$TargetLine = @(Get-Content $MappingFile | Where-Object { $_ -like "${HostName}:*" })
 
-# ---------------------------------------------------------------------------
-# [3단계] 버전별 설치 파일명 매핑
-# ---------------------------------------------------------------------------
-switch ($TargetVersion) {
-    "22" { $SsmsZipName = "SSMS_${TargetVersion}.zip" }
-    Default {
-        Log-Error "지원하지 않거나 잘못된 SSMS 버전 지정입니다: '$TargetVersion'"
-        exit 1
+if ($TargetLine) {
+    $SwItems = $TargetLine[0].Split(":")[1].Trim().Split(",")
+    
+    foreach ($item in $SwItems) {
+        $Parts = $item.Split("_")
+        # 모듈 이름에서 버전 부분을 분리하여 install_*.ps1 파일 탐색
+        $SwName    = $null
+        $SwVersion = ""
+        $ModuleScript = $null
+        
+        for ($i = $Parts.Count; $i -ge 1; $i--) {
+            $Candidate = $Parts[0..($i - 1)] -join "_"
+            $CandidatePath = "$PSScriptRoot\install_$Candidate.ps1"
+            if (Test-Path $CandidatePath) {
+                $ModuleScript = $CandidatePath
+                $SwName = $Candidate
+                $SwVersion = if ($i -lt $Parts.Count) { $Parts[$i..($Parts.Count - 1)] -join "_" } else { "" }
+                break
+            }
+        }
+        
+        if (Test-Path $ModuleScript) {
+            Log-Info "모듈 스크립트 호출: install_$SwName.ps1 (버전: $SwVersion)"
+            & $ModuleScript `
+                -TargetVersion $SwVersion `
+                -HostConfigFile $HostConfig `
+                -CommonConfigFile $CommonConfig
+        } else {
+            Log-Warn "설치 모듈 스크립트를 찾을 수 없습니다: $ModuleScript"
+        }
     }
+    Log-Success "모든 소프트웨어 설치 작업이 완료되었습니다."
+} else {
+    Log-Warn "$HostName 서버에 매핑된 SW 설치 항목이 없습니다."
 }
-
-# ---------------------------------------------------------------------------
-# [4단계] 다운로드 디렉토리 생성 및 zip 파일 다운로드
-# ---------------------------------------------------------------------------
-if (-not (Test-Path $global:DOWN_PATH)) { New-Item -ItemType Directory -Force -Path $global:DOWN_PATH | Out-Null }
-
-$DownloadUrl = "$($global:CON_URL)/windows/ssms_${TargetVersion}/$SsmsZipName"
-$ZipFilePath = "$($global:DOWN_PATH)\$SsmsZipName"
-
-Log-Info "SSMS zip 파일 다운로드 시작: $DownloadUrl"
-try {  
-    $wc = New-Object System.Net.WebClient  
-    $wc.Headers.Add("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64)")  
-    $wc.DownloadFile($DownloadUrl, $ZipFilePath)  
-    Log-Success "SSMS zip 파일 다운로드 완료: $ZipFilePath"  
-} catch {  
-    Log-Error "SSMS zip 파일 다운로드 실패: $_"  
-    exit 1  
-} 
-
-# ---------------------------------------------------------------------------
-# [5단계] zip 파일 압축 해제
-# ---------------------------------------------------------------------------
-$ExtractPath = "C:\os-setup\temp\SSMS_$TargetVersion"
-$InstallerFile = "vs_SSMS.exe"
-
-if (-not (Test-Path $ExtractPath)) {
-    New-Item -ItemType Directory -Force -Path $ExtractPath | Out-Null
-}
-
-Log-Info "SSMS $TargetVersion 압축 해제 시작: $ZipFilePath -> $ExtractPath"
-try {
-    if (Test-Path $ExtractPath) { Remove-Item -Path $ExtractPath -Recurse -Force -ErrorAction SilentlyContinue }  
-    New-Item -ItemType Directory -Force -Path $ExtractPath | Out-Null
-
-    Add-Type -AssemblyName System.IO.Compression.FileSystem
-
-    [System.IO.Compression.ZipFile]::ExtractToDirectory($ZipFilePath, $ExtractPath)
-
-    Log-Success "압축 해제 완료"
-}
-catch {
-    Log-Error "SSMS $TargetVersion 압축 해제 실패: $_"
-    exit 1
-}
-
-Log-Info "설치 파일($InstallerFile) 위치 탐색 중..."  
-$ActualInstaller = Get-ChildItem -Path $ExtractPath -Filter $InstallerFile -Recurse | Select-Object -First 1
-
-if ($null -eq $ActualInstaller) {  
-    Log-Error "SSMS 설치 프로그램을 찾을 수 없습니다. (탐색 경로: $ExtractPath)"  
-    exit 1  
-}
-
-$InstallerPath = $ActualInstaller.FullName  
-
-Log-Info "== $InstallerPath"
-
-# ---------------------------------------------------------------------------
-# [6단계] SSMS Silent 설치
-# ---------------------------------------------------------------------------
-# SSMS 설치 옵션
-# --noWeb      : No WEB Connection
-# --quiet        : 완전 silent (UI 없음)
-# --norestart    : 재부팅 불필요
-$installArgs = @(
-    "--noWeb"
-    "--quiet"
-    "--norestart"
-    "--wait"
-)
 
 Log-Info "========================================================="
-Log-Info "SSMS $TargetVersion 설치 중... (시간이 오래 걸릴 수 있습니다.)"
-Log-Info "========================================================="
-
-# Start-Process 로 실행하되, 창 숨기기 및 백그라운드 처리
-Start-Process -FilePath $InstallerPath -ArgumentList $installArgs -Wait
-
-# ---------------------------------------------------------------------------
-# [7단계] 임시 파일 정리
-# ---------------------------------------------------------------------------
-Remove-Item -Path $ExtractPath -Recurse -Force -ErrorAction SilentlyContinue
-Remove-Item -Path $ZipFilePath -Force -ErrorAction SilentlyContinue
-Log-Info "임시 파일 및 zip 파일 정리 완료"
-
-exit 0
+Stop-Transcript | Out-Null
