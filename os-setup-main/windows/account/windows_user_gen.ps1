@@ -1,4 +1,4 @@
-# ---------------------------------------------------------------------------                 
+﻿# ---------------------------------------------------------------------------                 
 # Windows Server 계정 생성 전용 스크립트 (일반 계정: 최초 암호 변경 / osmanaged: 만료 비활성화)
 # ---------------------------------------------------------------------------
 
@@ -12,8 +12,8 @@ $ConfigDir = Join-Path -Path (Split-Path -Parent $CurrentDir) -ChildPath "config
 # 3. 최종 CSV 파일 경로 지정  
 $ConfigFile = Join-Path -Path $ConfigDir -ChildPath "Windows_user_gen.csv"
 
-$CSVData = Import-Csv "$ConfigFile"                
-$TotalServers = $CSVData.Count
+$CSVData = Import-Csv -Path "$ConfigFile" -Encoding UTF8               
+# $TotalServers = $CSVData.Count
 
 Write-Host "`n[ 시스템 로드 확인 ]" -ForegroundColor Cyan  
 Write-Host "로드된 설정 파일: $ConfigFile"    
