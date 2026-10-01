@@ -6,7 +6,7 @@
 #   기존: runInstaller로 매번 새로 설치 (약 941MB zip 다운로드 + Java
 #         installer 실행) → 원본 zip 손상으로 tnsping 등 일부 파일이
 #         0바이트로 설치되는 문제 발견됨.
-#   신규: 이미 검증된 골든 서버의 /oracle/CLIENT, /oracle/orainventory를
+#   신규: 이미 검증된 골든 서버의 /oracle/CLIENT, /oracle/oraInventory를
 #         각각 tar로 백업해둔 것을 개별 다운로드하여 그대로 복제하고,
 #         oracle 계정용 .bash_profile도 별도 파일로 다운로드하여
 #         /oracle/.bash_profile로 교체. Oracle Inventory 등록만
@@ -20,7 +20,7 @@
 # [사전 준비 - 운영자가 미리 해둘 것]
 #   RHEL 메이저 버전별 골든 서버에서 (예: RHEL8 골든 서버에서):
 #     cd /oracle && tar cf CLIENT_8.tar CLIENT/
-#     cd /oracle && tar cf orainventory_8.tar orainventory/
+#     cd /oracle && tar cf oraInventory_8.tar oraInventory/
 #   RHEL9, RHEL10 골든 서버에서도 동일하게 반복 (파일명 접미사만 _9, _10)
 #   - oracle 계정용 .bash_profile은 bash_profile_8 / bash_profile_9 /
 #     bash_profile_10 이름으로 별도 준비 (RHEL 버전별 내용 차이는 없음)
@@ -28,7 +28,7 @@
 #     먼저 반드시 검증할 것
 #   - 업로드 위치 (총 9개 파일, 모두 같은 디렉터리):
 #       ${BASE_URL}/files/linux/oracle_client_tar/CLIENT_{8,9,10}.tar
-#       ${BASE_URL}/files/linux/oracle_client_tar/orainventory_{8,9,10}.tar
+#       ${BASE_URL}/files/linux/oracle_client_tar/oraInventory_{8,9,10}.tar
 #       ${BASE_URL}/files/linux/oracle_client_tar/bash_profile_{8,9,10}
 #
 # [호출 규약]
@@ -121,7 +121,7 @@ esac
 
 # 버전별 다운로드 대상 파일명 (RHEL 8/9/10 모두 절차는 동일, 파일명 접미사만 다름)
 CLIENT_TAR="CLIENT_${OS_MAJOR}.tar"
-INVENTORY_TAR="orainventory_${OS_MAJOR}.tar"
+INVENTORY_TAR="oraInventory_${OS_MAJOR}.tar"
 BASH_PROFILE_SRC="bash_profile_${OS_MAJOR}"
 
 log_info "사용할 골든 이미지: ${CLIENT_TAR}, ${INVENTORY_TAR}, ${BASH_PROFILE_SRC} (CV_ASSUME_DISTID=${OEL_VALUE})"
@@ -208,7 +208,7 @@ fi
 
 # ==========================================================
 # 8. 다운로드 공통 함수
-#    (CLIENT tar / orainventory tar / .bash_profile 3개 파일에 공용 사용)
+#    (CLIENT tar / oraInventory tar / .bash_profile 3개 파일에 공용 사용)
 # ==========================================================
 BASE_DOWNLOAD_URL="${FILE_URL}/oracle_client_tar"
 WORK_DIR="${BASE_DIR}/oracle_clone_install"
@@ -248,7 +248,7 @@ download_file "${BASE_DOWNLOAD_URL}/${BASH_PROFILE_SRC}" "$BASH_PROFILE_PATH" ||
 # ==========================================================
 extract_component_tar() {
     local tar_file="$1"
-    local expected_name="$2"   # "CLIENT" 또는 "orainventory"
+    local expected_name="$2"   # "CLIENT" 또는 "oraInventory"
     local filelist
     filelist=$(mktemp)
 
@@ -281,7 +281,7 @@ extract_component_tar() {
 }
 
 extract_component_tar "$CLIENT_TAR_PATH" "CLIENT" || { rm -rf "$WORK_DIR"; exit 1; }
-extract_component_tar "$INVENTORY_TAR_PATH" "orainventory" || { rm -rf "$WORK_DIR"; exit 1; }
+extract_component_tar "$INVENTORY_TAR_PATH" "oraInventory" || { rm -rf "$WORK_DIR"; exit 1; }
 
 # 필수 디렉터리 존재 확인
 for d in ${TARGET_ORACLE_BASE} ${TARGET_INVENTORY_LOCATION}; do
@@ -302,7 +302,7 @@ log_success "압축 해제 및 .bash_profile 배치 완료, 디렉터리 구조 
 # ==========================================================
 chown -R ${TARGET_ORACLE_OWNER} ${TARGET_ORACLE_PATH}
 chmod -R 750 ${TARGET_ORACLE_BASE} ${TARGET_INVENTORY_LOCATION}
-chown oracle:${ORACLE_UNIX_GROUP} ${TARGET_ORACLE_PATH}/.bash_profile
+chown ${TARGET_ORACLE_OWNER} ${TARGET_ORACLE_PATH}/.bash_profile
 chmod 640 ${TARGET_ORACLE_PATH}/.bash_profile
 
 # SELinux 컨텍스트 복구 (enforcing 환경에서 tar로 옮긴 파일은 라벨이 깨질 수 있음)
