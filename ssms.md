@@ -122,3 +122,29 @@ mmc.exe
 - [Microsoft 공식 문서 — Install certificates for SSMS](https://learn.microsoft.com/en-us/ssms/install/install-certificates)
 - [mssqltips — SSMS Offline Installer: Complete Installation Guide](https://www.mssqltips.com/sqlservertip/11598/ssms-22-offline-installation/)
 - [Microsoft Q&A — Failed Silently when SSMS v22 layout offline installation](https://learn.microsoft.com/en-us/answers/questions/5787424/failed-silently-when-ssms-v22-layout-offline-insta)
+
+
+
+windows2019 - ssms 22 설치 이슈 
+
+1. 설치 시 아래와 같은 이슈 발생 
+[14d8:0005][2026-10-01T20:14:40] NoWeb or OfflineFilePath specified, skipping latest installer feed check.
+[14d8:0005][2026-10-01T20:14:40] Existing client is unsupported: C:\Program Files (x86)\Microsoft Visual Studio\Installer\setup.exe does not exist.
+[14d8:0005][2026-10-01T20:14:40] Using Offline package: C:\os-setup\temp\SSMS_Offline_4_22\SSMS_Offline\vs_installer.opc
+[14d8:0005][2026-10-01T20:14:40] Saving Certificates to layout folder
+[14d8:0005][2026-10-01T20:15:25] Certificate is invalid: C:\os-setup\temp\SSMS_Offline_4_22\SSMS_Offline\vs_installer.opc
+[14d8:0005][2026-10-01T20:15:25] Error: Unable to verify the certificate: InvalidCertificate
+[14d8:0005][2026-10-01T20:15:25] Error 0x80131509: Signature verification failed. Error: Unable to verify the integrity of the installation files: the certificate could not be verified.
+   위치: Microsoft.VisualStudio.Setup.OpcVerifier.Verify(Stream packageStream, String layoutLocation, Boolean skipSavingCertificate)
+   위치: Microsoft.VisualStudio.Setup.Bootstrapper.Bootstrapper.VerifyLayoutPackage(Stream packageStream)
+[14d8:0005][2026-10-01T20:15:26] 설치 파일의 무결성을 확인할 수 없습니다. 패키지 서명을 확인할 수 없습니다.
+[14d8:0005][2026-10-01T20:15:26] Bootstrapper failed with known error.
+
+
+2. 원인 분석
+폐쇄망 환경으로 인해 설치 프로그램이 MS 인증서의 유효성을 확인하기 위한 CRL(인증서 폐기 목록) 서버에 접속하지 못해 발생하는 보안 검증 오류로 판단.
+
+3. 조치 내역 (모두 수행했으나 동일 증상 발생)
+1) .NET Framework 4.8 업데이트 완료 (버전 요구사항 충족)
+2) MS 루트 및 중간 인증서 수동 등록 완료 (신뢰 체인 구축)
+3) 인터넷 옵션 → 서버/게시자 인증서 해지 확인(CRL) 설정 해제 완료
