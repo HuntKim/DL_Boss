@@ -43,13 +43,29 @@
 https://www.microsoft.com/pkiops/certs/Microsoft%20Windows%20Code%20Signing%20PCA%202024.crt
 ```
 
+⚠️ **이 인증서는 루트(Root)가 아니라 "중간 인증 기관(Intermediate
+Certification Authorities)" 저장소에 들어가야 함.** 이름의 "PCA"(Policy
+Certification Authority)는 MS PKI 체계에서 통상 중간 발급 CA를 가리킴.
+`"Root"`에 넣으면 설치는 "성공"했다고 뜨지만 체인 검증 시 여전히
+"중간 인증서가 설치되지 않음"으로 실패한다.
+
 대상 서버에서 **관리자 권한 명령 프롬프트**로:
 ```cmd
-certutil.exe -addstore -f "Root" "C:\경로\Microsoft Windows Code Signing PCA 2024.crt"
+certutil.exe -addstore -f "CA" "C:\경로\Microsoft Windows Code Signing PCA 2024.crt"
 ```
+(`"Root"`가 아니라 **`"CA"`** — 중간 인증 기관 저장소를 가리키는
+certutil 키워드)
 
 GUI로 하는 경우: 받은 `.crt` 파일 우클릭 → **인증서 설치** → 저장소 위치
 **로컬 컴퓨터** → "인증서 종류에 따라 자동으로 저장소 선택" 유지 → 마침
+(이 옵션을 그대로 두면 Windows가 알아서 중간 인증 기관 저장소로 넣어줌 —
+저장소를 수동으로 "신뢰할 수 있는 루트 인증 기관"으로 지정하지 말 것)
+
+**이미 `"Root"`에 잘못 넣었다면** 삭제 후 다시 `"CA"`로 추가:
+```cmd
+certutil.exe -delstore "Root" "Microsoft Windows Code Signing PCA 2024"
+certutil.exe -addstore -f "CA" "C:\경로\Microsoft Windows Code Signing PCA 2024.crt"
+```
 
 ### 3-2. 오프라인(Layout) 설치본을 쓰는 경우 — 나머지 인증서 3개 추가
 
