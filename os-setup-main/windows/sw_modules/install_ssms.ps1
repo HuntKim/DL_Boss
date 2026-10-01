@@ -1,4 +1,4 @@
-# sw_modules/install_ssms.ps1
+﻿# sw_modules/install_ssms.ps1
 # ===========================================================================
 # SSMS (SQL Server Management Studio) 설치 모듈
 # SSMS 22 버전 silent 설치 지원
