@@ -1,4 +1,4 @@
-# sw_modules/install_net_framework.ps1
+﻿# sw_modules/install_net_framework.ps1
 # ==============================================================================
 # .NET Framework 통합 설치 모듈 (3.5 / 4.8 지원)
 # - .NET Framework 3.5와 4.x는 공존 가능하므로, TargetVersion에 따라 해당 버전만 설치

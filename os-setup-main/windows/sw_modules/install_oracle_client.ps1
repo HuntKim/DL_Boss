@@ -1,4 +1,4 @@
-# sw_modules/install_oracle_client.ps1
+﻿# sw_modules/install_oracle_client.ps1
 # ==============================================================================
 # Oracle Client 설치 모듈
 # 원격 서버에서 zip 설치 파일을 다운로드 후, switch 로 버전별 파일 선정하여

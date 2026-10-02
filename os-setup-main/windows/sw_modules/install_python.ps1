@@ -1,4 +1,4 @@
-# sw_modules/install_python.ps1
+﻿# sw_modules/install_python.ps1
 # ==============================================================================
 # Python Integrated Installation Module for Windows Server
 # ==============================================================================

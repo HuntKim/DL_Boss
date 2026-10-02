@@ -1,4 +1,4 @@
-# sw_modules/install_openjdk.ps1
+﻿# sw_modules/install_openjdk.ps1
 # ==============================================================================
 # JDK Integrated Installation Module for Windows Server
 # ==============================================================================
