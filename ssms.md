@@ -117,6 +117,26 @@ OS 버전이 다른 두 서버에서 똑같이 45초가 걸렸다는 건, 이 �
 확인할 수 없음" 상태로 넘어가고, OpcVerifier는 이 상태를 그냥
 `InvalidCertificate`로 처리해버린다.
 
+**[2026-10-08 업데이트] 3-1 레지스트리 적용 후에도 동일 — 원인 재정정**
+
+3-1(타임아웃 단축)을 적용한 뒤 재시도한 결과: **45초 대기는 사라졌지만
+"무결성/서명 확인 불가" 오류는 그대로 재현됨.** 이건 매우 중요한 신호다
+— 느려서 실패한 게 아니라, **애초에 오프라인 상태로는 통과할 수 없는
+검증을 하고 있다는 뜻**이다. 타임아웃을 줄이면 "더 빨리 포기하고
+실패"할 뿐, 결과(실패) 자체는 바뀌지 않는다 — 지금 재현된 현상이 바로
+그 증거다.
+
+실제로 이건 Microsoft 쪽에서도 공식적으로 인정한 문제다. **2025년 6월
+말 이후 새로 생성된 VS/SSMS 오프라인 Layout부터 패키지(.opc) 서명에 대한
+폐기(Revocation) 확인이 필수로 바뀌었고, 오프라인 머신은 이 확인을 할
+방법이 없어 설치가 거부**된다 (Microsoft Q&A에서 MS 직원이 직접 확인한
+내용). 레이아웃을 만든(=인터넷 되는) 머신에서는 통과하지만, 그 레이아웃을
+폐쇄망으로 그대로 옮겨서 설치하면 항상 이 오류가 재현된다. 추후
+부트스트래퍼 3.15에 `--ignore-revocation` 플래그를 추가하겠다는 공지가
+있었지만, 2025-11 기준 사용자 보고로는 아직 실제 배포되지 않은 것으로
+확인됨 — 즉 **현재 시점에 Microsoft가 공식 지원하는 깔끔한 한 줄짜리
+해결책은 없다.**
+
 **이미 시도하신 "인터넷 옵션 → 서버/게시자 인증서 해지 확인(CRL) 해제"가
 효과가 없었던 이유**도 여기서 설명된다: 그 옵션은 Internet
 Explorer/WinINet 계층 및 구형 `WinVerifyTrust` 기반 서명 검사에 적용되는
@@ -188,6 +208,50 @@ certutil -verify -urlfetch "C:\Windows\System32\notepad.exe"
   빨리 포기하게" 하는 조치이지 "막힌 걸 뚫는" 조치는 아님)
   - `ctldl.windowsupdate.com`, `crl.microsoft.com`, `ocsp.msocsp.com`
 
+### 3-5. [신규] 3-1/3-2로도 해결 안 될 때 — 현실적인 선택지
+
+2번 "원인" 업데이트대로, 이건 타임아웃 튜닝으로 해결되는 문제가 아니라
+**완전 폐쇄망에서는 SSMS 22의 오프라인 Layout 자체가 구조적으로 설치가
+안 되는 Microsoft 쪽 변경사항**이다. 아래 중 하나를 선택해야 한다.
+
+**(a) SSMS 버전을 20/19로 다운그레이드 (가장 현실적/권장)**
+
+SSMS 22부터 VS 통합 번호체계로 바뀌면서 이 강화된 폐기 확인 로직이 같이
+들어간 것으로 보임. SSMS 20/19는 2025년 6월 변경 이전 부트스트래퍼를
+쓰므로 이 문제 자체가 없음. v22의 신규 기능이 꼭 필요한 게 아니라면,
+이 프로젝트에서 Oracle 19c→11g 때와 같은 논리로(폐쇄망 호환성을 위해
+구버전으로) **SSMS 20 오프라인 설치본으로 교체**하는 것을 1순위로 권장.
+
+**(b) 로컬 CRL 미러 구성 (구조적으로 가장 깔끔하지만 운영 부담 있음)**
+
+"폐기 확인을 끄는" 게 아니라 "폐기 확인이 실제로 성공하도록" 만드는
+방법. 인터넷 되는 PC에서 인증서가 실제로 참조하는 CRL 배포 지점(CDP)
+URL을 확인:
+```cmd
+certutil -dump "Microsoft Windows Code Signing PCA 2024.crt"
+```
+(출력 중 "CRL Distribution Point" 항목의 URL 확인)
+
+그 URL에서 실제 `.crl` 파일을 받아 폐쇄망 내부의 웹서버에 올려두고,
+대상 서버의 `hosts` 파일(또는 내부 DNS)에서 해당 도메인
+(`crl.microsoft.com`, `www.microsoft.com` 등)을 그 내부 웹서버로
+리다이렉트. CRL은 보통 1~4주 주기로 만료되므로, 주기적으로 인터넷
+PC에서 다시 받아 갱신해야 함(수동/스크립트).
+
+**(c) 설치 시점에만 한시적으로 아웃바운드 예외 허용**
+
+정책상 가능하다면, SSMS 설치 1회만 `crl.microsoft.com`,
+`www.microsoft.com`, `ocsp.msocsp.com`, `ctldl.windowsupdate.com`로의
+아웃바운드를 임시로 열어주고(방화벽/프록시 예외) 설치 완료 후 다시
+차단. 가장 적은 작업량으로 끝나지만 보안팀 승인이 필요.
+
+**(d) 인터넷 되는 머신에서 SSMS를 미리 설치한 VM/이미지를 복제**
+
+SSMS 자체는 설치 후에는 네트워크 체크를 다시 하지 않으므로, 인터넷이
+되는 동일 OS 버전 VM에 SSMS 22를 먼저 설치한 뒤 그 VM을 템플릿/이미지로
+만들어 폐쇄망에 배포하는 방법도 있음 (단, 이미 운영 중인 서버라면
+적용하기 어려움).
+
 ## 4. 참고
 
 - [Microsoft 공식 문서 — Install certificates for SSMS](https://learn.microsoft.com/en-us/ssms/install/install-certificates)
@@ -196,4 +260,6 @@ certutil -verify -urlfetch "C:\Windows\System32\notepad.exe"
 - [Microsoft Q&A — Which certificate does the VS installer use for verification of vs_installer.opc](https://learn.microsoft.com/en-us/answers/questions/2287345/which-certificate-does-the-vs-installer-use-for-ve)
 - [rusanu.com — Fix slow application startup due to code sign validation (ChainUrlRetrievalTimeoutMilliseconds 설명)](https://rusanu.com/2009/07/24/fix-slow-application-startup-due-to-code-sign-validation/)
 - [admx.help — Turn off Automatic Root Certificates Update (GPO/레지스트리 경로)](https://admx.help/?Category=Windows_10_2016&Policy=Microsoft.Policies.InternetCommunicationManagement::CertMgr_DisableAutoRootUpdates)
+- [Microsoft Q&A — Visual Studio 2019 installer no longer allows offline install, MSFT says a revocation check stops it](https://learn.microsoft.com/en-in/answers/questions/5549685/visual-studios-2019-installer-no-longer-allows-me) — 2025-06 이후 오프라인 Layout에 폐기 확인이 필수로 바뀐 것을 MS가 직접 인정한 스레드. `--ignore-revocation` 플래그(3.15) 예고는 2025-11 기준 미배포.
+- [Microsoft Developer Community — Visual Studio offline layout fails vs_installer.opc certificate verification](https://developercommunity.microsoft.com/t/11103126)
 
