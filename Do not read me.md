@@ -1,4 +1,7 @@
 # Linux 명령 및 기타
+
+java-1.8.0-openjdk-1.8.0.322.b06-11.el8.x86_64 설치파일 다운로드
+
 ## 계정 생성
 ```bash
 groupadd -g 1100 dba
