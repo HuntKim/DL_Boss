@@ -1,0 +1,46 @@
+https://osmanaged.samsungds.net/
+Cloud OS Tech Service --
+
+/Server Profile Managed Service/  
+  ├── Left/                                       # 도메인 별 구분  
+  │   ├── 상단/                                   # 운영 대상 서버  
+  │   │   ├── Linux Agent Deploy                  # Linux 서버 대상 Agent 자동 배포 실행
+  │   │   ├── Windows Agent Deploy                # Windows 서버 대상 Agent 자동 배포 실행 
+  │   ├── 도메인/                                  # 운영 대상 서버  
+  │   │   ├── init.sh                             # OS Setup 파일 및 구조 자동 배포 스크립트  
+  │   │   ├── Hostname/                           # Grafana Deshboard 연결  
+  │   │   │   ├── Grafana                         # Grafana Deshboard 연결 버튼
+  │   │   │   └── IPMI                            # Bare Metal 시스템 접속 용 IPMI IP 정보 확인
+  │   │   ├──────────────────────────────────────────────────────────────────────────────────────────────── Body/                        # 화면 중앙
+  │   │   │                                                                                                 ├── Profile Log 1            # 금일 시스템 로그 수집 결과
+  │   │   │                                                                                                 ├── Profile Log 2            # 전일 시스템 로그 수집 결과
+  │   │   │                                                                                                 └── Profile Diff 결과        # Profile Log 1 / Profile Log 2 비교 결과
+  │   │   ├── os-parameter/                       # [OS 파라미터 설정]  
+  │   │   │   ├── os_param_apply.sh               # OS 파라미터 설정 스크립트  
+  │   │   │   ├── os_param_rollback.sh            # OS 파라미터 설정 롤백 스크립트  
+  │   │   │   └── os_param_verify.sh              # OS 파라미터 설정 검증 스크립트  
+  │   │   ├── monitoring/                         # [COTS 모니터링 설정]  
+  │   │   │   └── setup_monitoring.sh             # exporter, collector 설정 스크립트  
+  │   │   └── sw-modules/                         # [SW 자동 설치]  
+
+/Monthly Report Service/  
+  ├── Left/                                       # 도메인 별 구분  
+  │   ├── 상단/                                   # 운영 대상 서버  
+  │   │   ├── Linux Agent Deploy                  # Linux 서버 대상 Agent 자동 배포 실행
+  │   │   ├── Windows Agent Deploy                # Windows 서버 대상 Agent 자동 배포 실행 
+  │   ├── 도메인/                                  # 운영 대상 서버  
+  │   │   ├── init.sh                             # OS Setup 파일 및 구조 자동 배포 스크립트  
+  │   │   ├── Hostname/                           # Grafana Deshboard 연결  
+  │   │   │   ├── Grafana                         # Grafana Deshboard 연결 버튼
+  │   │   │   └── IPMI                            # Bare Metal 시스템 접속 용 IPMI IP 정보 확인
+  │   │   ├──────────────────────────────────────────────────────────────────────────────────────────────── Body/                        # 화면 중앙
+  │   │   │                                                                                                 ├── Profile Log 1            # 금일 시스템 로그 수집 결과
+  │   │   │                                                                                                 ├── Profile Log 2            # 전일 시스템 로그 수집 결과
+  │   │   │                                                                                                 └── Profile Diff 결과        # Profile Log 1 / Profile Log 2 비교 결과
+  │   │   ├── os-parameter/                       # [OS 파라미터 설정]  
+  │   │   │   ├── os_param_apply.sh               # OS 파라미터 설정 스크립트  
+  │   │   │   ├── os_param_rollback.sh            # OS 파라미터 설정 롤백 스크립트  
+  │   │   │   └── os_param_verify.sh              # OS 파라미터 설정 검증 스크립트  
+  │   │   ├── monitoring/                         # [COTS 모니터링 설정]  
+  │   │   │   └── setup_monitoring.sh             # exporter, collector 설정 스크립트  
+  │   │   └── sw-modules/                         # [SW 자동 설치]  
