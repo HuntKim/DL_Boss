@@ -1,0 +1,51 @@
+# jdk-6u37-linux-x64.zip 설치
+1. 받고 무엇이 들었는지 확인
+
+bash
+cd /tmp
+curl -f -k -L --retry 3 -o jdk-6u37-linux-x64.zip "<파일서버>/.../jdk-6u37-linux-x64.zip"
+unzip -t jdk-6u37-linux-x64.zip | tail -1   # 손상 여부 (0바이트·깨진 zip 방지)
+unzip -l jdk-6u37-linux-x64.zip | head -20  # jdk1.6.0_37/ 폴더인지, .bin 파일인지 확인
+
+2-A. 압축 안에 jdk1.6.0_37/ 폴더가 있는 경우
+
+bash
+mkdir -p /usr/local/java
+unzip -q /tmp/jdk-6u37-linux-x64.zip -d /usr/local/java
+chown -R root:root /usr/local/java/jdk1.6.0_37
+# Windows에서 만든 zip이면 실행 권한이 빠지므로 보정
+chmod -R a+rX /usr/local/java/jdk1.6.0_37
+chmod a+x /usr/local/java/jdk1.6.0_37/bin/* /usr/local/java/jdk1.6.0_37/jre/bin/*
+
+2-B. 압축 안에 jdk-6u37-linux-x64.bin이 있는 경우
+
+bash
+mkdir -p /usr/local/java /tmp/jdk6
+unzip -q /tmp/jdk-6u37-linux-x64.zip -d /tmp/jdk6
+chmod +x /tmp/jdk6/jdk-6u37-linux-x64.bin
+cd /usr/local/java && echo | /tmp/jdk6/jdk-6u37-linux-x64.bin   # 현재 디렉터리에 jdk1.6.0_37 생성
+
+.bin은 실행한 디렉터리에 풀리고 마지막에 Enter 입력을 기다리므로 echo |로 넘깁니다.
+
+3. 심볼릭 링크와 환경변수
+
+bash
+ln -sfn /usr/local/java/jdk1.6.0_37 /usr/local/java/jdk6
+
+# JDK 6를 서버 기본으로 쓸 때만
+cat > /etc/profile.d/jdk6.sh <<'EOF'
+export JAVA_HOME=/usr/local/java/jdk6
+export PATH=$JAVA_HOME/bin:$PATH
+EOF
+
+이미 다른 JDK가 기본으로 설치돼 있다면 profile.d는 만들지 말고, 필요한 애플리케이션의 기동 스크립트에서만 JAVA_HOME=/usr/local/java/jdk6을 지정하세요.
+
+4. 확인
+
+bash
+/usr/local/java/jdk6/bin/java -version   # java version "1.6.0_37" 이 나오면 정상
+
+주의할 점
+
+JDK 6는 지원이 종료됐습니다. TLS 1.0만 지원해서, RHEL 8/9의 기본 암호 정책에서는 외부 HTTPS 접속이 실패할 수 있습니다. 앱이 외부 SSL 연동을 한다면 별도 검토가 필요합니다.
+설치할 서버가 RHEL 8, 9, 10 중 어디인지, 그리고 unzip -l 결과가 2-A인지 2-B인지 알려 주세요. 알려 주시면 setup_sw.sh 프레임워크용 install_jdk6.sh 모듈로 만들어 드리겠습니다. 다만 저장소 push는 아직 막혀 있어서, 지금은 파일로 전달하는 방식이 됩니다.
